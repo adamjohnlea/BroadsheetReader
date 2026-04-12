@@ -54,13 +54,15 @@ struct ItemGridView: View {
         }
         .navigationTitle(navigationTitle)
         .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Picker("Filter", selection: $showUnreadOnly) {
-                    Text("All").tag(false)
-                    Text("Unread").tag(true)
+            if selection != .bookmarks {
+                ToolbarItem(placement: .automatic) {
+                    Picker("Filter", selection: $showUnreadOnly) {
+                        Text("All").tag(false)
+                        Text("Unread").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 120)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 120)
             }
         }
     }
@@ -94,8 +96,7 @@ struct ItemGridView: View {
         case .allItems, .none, .search:
             base = showUnreadOnly ? visible.filter(unreadFilter) : visible
         case .bookmarks:
-            let bookmarked = visible.filter { $0.bookmark != nil }
-            base = showUnreadOnly ? bookmarked.filter(unreadFilter) : bookmarked
+            base = visible.filter { $0.bookmark != nil }
         case .feed(let feed):
             let feedItems = visible.filter { $0.feed?.persistentModelID == feed.persistentModelID }
             base = showUnreadOnly ? feedItems.filter(unreadFilter) : feedItems
@@ -134,9 +135,12 @@ struct ItemGridView: View {
 
     private func toggleBookmark(for item: FeedItem) {
         if let existing = item.bookmark {
+            item.bookmark = nil
             modelContext.delete(existing)
         } else {
-            modelContext.insert(Bookmark(item: item))
+            let bookmark = Bookmark(item: item)
+            modelContext.insert(bookmark)
+            item.bookmark = bookmark
         }
     }
 }
@@ -177,6 +181,18 @@ private struct ArticleRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+            }
+
+            // Bookmark note snippet
+            if let note = item.bookmark?.note, !note.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 9))
+                    Text(note)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 6)

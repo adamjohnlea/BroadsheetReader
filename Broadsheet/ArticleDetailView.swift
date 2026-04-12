@@ -23,6 +23,7 @@ struct ArticleDetailView: View {
 private struct ArticleReader: View {
     let item: FeedItem
     @Environment(\.modelContext) private var modelContext
+    @State private var noteText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,6 +57,14 @@ private struct ArticleReader: View {
             .padding(.top, 20)
             .padding(.bottom, 16)
 
+            // Bookmark note (only shown when bookmarked)
+            if item.bookmark != nil {
+                Divider()
+                BookmarkNoteEditor(bookmark: item.bookmark!, noteText: $noteText)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+            }
+
             Divider()
 
             // Content
@@ -80,6 +89,10 @@ private struct ArticleReader: View {
                     description: Text("Open in browser to read the full article.")
                 )
             }
+        }
+        .onAppear { noteText = item.bookmark?.note ?? "" }
+        .onChange(of: item.bookmark?.persistentModelID) { _, _ in
+            noteText = item.bookmark?.note ?? ""
         }
         .toolbar {
             ToolbarItemGroup {
@@ -117,10 +130,45 @@ private struct ArticleReader: View {
 
     private func toggleBookmark() {
         if let existing = item.bookmark {
+            item.bookmark = nil
             modelContext.delete(existing)
         } else {
             let bookmark = Bookmark(item: item)
             modelContext.insert(bookmark)
+            item.bookmark = bookmark
+        }
+    }
+}
+
+// MARK: - Bookmark Note Editor
+
+private struct BookmarkNoteEditor: View {
+    let bookmark: Bookmark
+    @Binding var noteText: String
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "bookmark.fill")
+                .foregroundStyle(.secondary)
+                .font(.caption)
+                .padding(.top, 3)
+
+            ZStack(alignment: .topLeading) {
+                if noteText.isEmpty && !isFocused {
+                    Text("Add a note…")
+                        .font(.callout)
+                        .foregroundStyle(.tertiary)
+                }
+                TextEditor(text: $noteText)
+                    .font(.callout)
+                    .focused($isFocused)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 36, maxHeight: 120)
+                    .onChange(of: noteText) { _, newValue in
+                        bookmark.note = newValue.isEmpty ? nil : newValue
+                    }
+            }
         }
     }
 }

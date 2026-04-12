@@ -26,6 +26,9 @@ struct ContentView: View {
                 .onChange(of: searchQuery) { _, query in
                     if !query.isEmpty { sidebarSelection = .search }
                 }
+                .onChange(of: sidebarSelection) { _, _ in
+                    selectedItem = nil
+                }
         } detail: {
             ArticleDetailView(item: selectedItem)
         }
