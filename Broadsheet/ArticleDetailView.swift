@@ -1,0 +1,126 @@
+import SwiftUI
+import SwiftData
+import AppKit
+
+struct ArticleDetailView: View {
+    let item: FeedItem?
+    @Environment(\.modelContext) private var modelContext
+
+    var body: some View {
+        Group {
+            if let item {
+                ArticleReader(item: item)
+                    .id(item.persistentModelID)  // force re-render on item change
+            } else {
+                ContentUnavailableView("Select an Article", systemImage: "doc.text")
+            }
+        }
+    }
+}
+
+// MARK: - Reader
+
+private struct ArticleReader: View {
+    let item: FeedItem
+    @Environment(\.modelContext) private var modelContext
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(alignment: .leading, spacing: 10) {
+                Text(item.title)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .textSelection(.enabled)
+
+                HStack(spacing: 6) {
+                    FeedFavicon(urlString: item.feed?.faviconURL)
+                    Text(item.feed?.title ?? "Unknown Feed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if let author = item.author, !author.isEmpty {
+                        Text("·").foregroundStyle(.tertiary)
+                        Text(author)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if let date = item.publishedAt {
+                        Text(date, style: .date)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 16)
+
+            Divider()
+
+            // Content
+            if let content = item.content, !content.isEmpty {
+                WebView(
+                    html: content,
+                    baseURL: URL(string: item.url)
+                )
+                .padding(.horizontal, 20)
+            } else if let summary = item.summary, !summary.isEmpty {
+                ScrollView {
+                    Text(summary)
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(24)
+                }
+            } else {
+                ContentUnavailableView(
+                    "No Content",
+                    systemImage: "doc.text",
+                    description: Text("Open in browser to read the full article.")
+                )
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup {
+                Button {
+                    toggleBookmark()
+                } label: {
+                    Label(
+                        item.bookmark != nil ? "Remove Bookmark" : "Bookmark",
+                        systemImage: item.bookmark != nil ? "bookmark.fill" : "bookmark"
+                    )
+                }
+                .help(item.bookmark != nil ? "Remove Bookmark" : "Add Bookmark")
+
+                Button {
+                    item.isRead.toggle()
+                } label: {
+                    Label(
+                        item.isRead ? "Mark as Unread" : "Mark as Read",
+                        systemImage: item.isRead ? "envelope.badge" : "envelope.open"
+                    )
+                }
+                .help(item.isRead ? "Mark as Unread" : "Mark as Read")
+
+                if let url = URL(string: item.url) {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label("Open in Browser", systemImage: "safari")
+                    }
+                    .help("Open in Browser")
+                }
+            }
+        }
+    }
+
+    private func toggleBookmark() {
+        if let existing = item.bookmark {
+            modelContext.delete(existing)
+        } else {
+            let bookmark = Bookmark(item: item)
+            modelContext.insert(bookmark)
+        }
+    }
+}

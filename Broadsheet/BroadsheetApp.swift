@@ -1,25 +1,25 @@
-//
-//  BroadsheetApp.swift
-//  Broadsheet
-//
-//  Created by Adam Lea on 4/12/26.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct BroadsheetApp: App {
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        let schema = Schema([FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self])
+        let storeURL = URL.applicationSupportDirectory.appending(path: "Broadsheet.store")
+        let config = ModelConfiguration(schema: schema, url: storeURL)
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Schema changed — wipe all store files (main + WAL) and start fresh.
+            let fm = FileManager.default
+            for suffix in ["", "-shm", "-wal"] {
+                try? fm.removeItem(at: URL(fileURLWithPath: storeURL.path + suffix))
+            }
+            do {
+                return try ModelContainer(for: schema, configurations: [config])
+            } catch {
+                fatalError("Could not create ModelContainer: \(error)")
+            }
         }
     }()
 
@@ -28,5 +28,12 @@ struct BroadsheetApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+        .commands {
+            BroadsheetCommands()
+        }
+
+        Settings {
+            SettingsView()
+        }
     }
 }
