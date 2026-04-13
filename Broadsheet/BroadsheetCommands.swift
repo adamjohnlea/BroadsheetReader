@@ -118,8 +118,9 @@ struct BroadsheetCommands: Commands {
                 .keyboardShortcut(.upArrow, modifiers: .command)
         }
 
-        CommandGroup(replacing: .help) {
+        CommandGroup(before: .help) {
             Button("Welcome to Broadsheet Reader") { showWalkthrough?() }
+            Divider()
         }
     }
 }
