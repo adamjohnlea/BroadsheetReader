@@ -341,8 +341,9 @@ final class SearchTests: BroadsheetUITestCase {
 
     @MainActor
     func testEmptySearchShowsPrompt() {
-        // Navigate to search with no text — should show "Search Articles" empty state.
-        app.typeKey("f", modifierFlags: [.command])
+        // Navigate to search — use sidebar click for reliable navigation on CI
+        // where FocusedValue keyboard shortcuts may not fire without window focus.
+        clickSidebarItem("Search")
         XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
     }
 }
@@ -427,9 +428,10 @@ final class FilterBarTests: BroadsheetUITestCase {
 
     @MainActor
     func testFilterBarHiddenOnBookmarksView() {
-        app.typeKey("3", modifierFlags: [.command]) // Bookmarks
+        // Use sidebar click for reliable navigation on CI.
+        clickSidebarItem("Bookmarks")
         // Wait for Bookmarks view to fully load before checking filter bar absence.
-        let bookmarksLoaded = app.staticTexts["No bookmarks yet."].waitForExistence(timeout: 8)
+        let bookmarksLoaded = app.staticTexts["No bookmarks yet."].waitForExistence(timeout: 10)
             || app.staticTexts["Bookmarks"].waitForExistence(timeout: 3)
         XCTAssertTrue(bookmarksLoaded || app.state == .runningForeground)
         // Bookmarks always shows all — no All/Unread segmented control.
@@ -438,7 +440,8 @@ final class FilterBarTests: BroadsheetUITestCase {
 
     @MainActor
     func testFilterBarHiddenOnEmptySearch() {
-        app.typeKey("f", modifierFlags: [.command]) // Search (no query)
+        // Use sidebar click for reliable navigation on CI.
+        clickSidebarItem("Search")
         // Wait for Search view to fully load before checking filter bar absence.
         XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.radioButtons["All"].exists)
@@ -465,7 +468,8 @@ final class EmptyStateTests: BroadsheetUITestCase {
 
     @MainActor
     func testSearchEmptyStateBeforeTyping() {
-        app.typeKey("f", modifierFlags: [.command])
+        // Use sidebar click for reliable navigation on CI.
+        clickSidebarItem("Search")
         XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
     }
 
