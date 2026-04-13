@@ -40,7 +40,7 @@ enum OPMLHandler {
         for group in feedGroups.sorted(by: { $0.sortOrder < $1.sortOrder }) {
             let name = esc(group.name)
             lines.append("    <outline text=\"\(name)\" title=\"\(name)\">")
-            for feed in group.feeds.sorted(by: { $0.sortOrder < $1.sortOrder }) {
+            for feed in (group.feeds ?? []).sorted(by: { $0.sortOrder < $1.sortOrder }) {
                 lines.append(feedLine(feed, indent: "      "))
             }
             lines.append("    </outline>")

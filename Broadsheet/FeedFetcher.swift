@@ -37,7 +37,7 @@ struct FeedFetcher {
     /// Resolves a user-supplied URL to an actual RSS/Atom feed URL.
     /// If the URL serves HTML, autodiscovers the feed from <link rel="alternate">.
     func discoverFeedURL(from urlString: String) async throws -> URL {
-        guard let url = URL(string: urlString) else { throw FetchError.invalidURL }
+        guard let url = upgradedToHTTPS(urlString) else { throw FetchError.invalidURL }
 
         let (data, response) = try await session.data(from: url)
 
@@ -63,6 +63,12 @@ struct FeedFetcher {
 
         // Optimistically try to parse as XML
         return url
+    }
+
+    private func upgradedToHTTPS(_ urlString: String) -> URL? {
+        guard var components = URLComponents(string: urlString) else { return nil }
+        if components.scheme == "http" { components.scheme = "https" }
+        return components.url
     }
 
     /// Fetches and parses a feed URL, returning structured data.
@@ -103,11 +109,13 @@ struct FeedFetcher {
     /// Refreshes an existing feed — fetches and inserts any new items.
     @MainActor
     func refresh(_ feed: Feed, context: ModelContext) async {
-        guard let url = URL(string: feed.url) else { return }
+        guard let url = upgradedToHTTPS(feed.url) else { return }
         do {
             let parsed = try await fetchFeed(url: url)
             feed.lastFetchedAt = Date()
             feed.fetchError    = nil
+            // Persist upgraded https:// URL so stored value is never http://
+            if feed.url != url.absoluteString { feed.url = url.absoluteString }
             // Update title only if it was never set properly
             if feed.title == feed.url {
                 let t = parsed.title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -133,7 +141,7 @@ struct FeedFetcher {
 
     @MainActor
     private func insertNewItems(_ items: [ParsedItem], into feed: Feed, context: ModelContext) {
-        let existingGUIDs = Set(feed.items.map(\.guid))
+        let existingGUIDs = Set((feed.items ?? []).map(\.guid))
         for parsed in items {
             guard !existingGUIDs.contains(parsed.guid) else { continue }
             let item = FeedItem(guid: parsed.guid, title: parsed.title, url: parsed.url)
@@ -165,7 +173,8 @@ struct FeedFetcher {
                 let hrefAttr = String(tag[hrefRange])
                     .replacingOccurrences(of: "href=\"", with: "")
                     .replacingOccurrences(of: "\"", with: "")
-                if let url = URL(string: hrefAttr, relativeTo: baseURL)?.absoluteURL {
+                if let url = URL(string: hrefAttr, relativeTo: baseURL)?.absoluteURL,
+                   url.scheme == "http" || url.scheme == "https" {
                     return url
                 }
             }
@@ -176,6 +185,7 @@ struct FeedFetcher {
     private func faviconURL(for siteURLString: String) -> String? {
         guard let url = URL(string: siteURLString),
               var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        components.scheme   = "https"   // always HTTPS — ATS blocks http:// image loads
         components.path     = "/favicon.ico"
         components.query    = nil
         components.fragment = nil

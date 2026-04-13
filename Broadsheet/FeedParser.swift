@@ -203,19 +203,16 @@ final class FeedParser: NSObject, XMLParserDelegate {
         return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static let rfc2822Formatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
-
     private func parseRFC2822(_ string: String) -> Date? {
         let formats = [
             "EEE, dd MMM yyyy HH:mm:ss Z",
             "EEE, dd MMM yyyy HH:mm:ss zzz",
             "dd MMM yyyy HH:mm:ss Z",
         ]
-        let f = Self.rfc2822Formatter
+        // Fresh formatter per call — DateFormatter is not thread-safe when
+        // dateFormat is mutated, so a shared static instance would race.
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         for format in formats {
             f.dateFormat = format
             if let date = f.date(from: string) { return date }

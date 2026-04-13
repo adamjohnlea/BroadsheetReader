@@ -9,10 +9,69 @@ struct ItemGridView: View {
     @Query private var allItems: [FeedItem]
     @Environment(\.modelContext) private var modelContext
     @AppStorage("markReadOnOpen") private var markReadOnOpen = true
-    @AppStorage("showUnreadOnly") private var showUnreadOnly = false
+    @AppStorage("retentionDays") private var retentionDays = 30
+    @State private var unreadFilters: [String: Bool] = {
+        UserDefaults.standard.dictionary(forKey: "unreadFilters") as? [String: Bool] ?? [:]
+    }()
+
+    private var selectionKey: String {
+        switch selection {
+        case .today:             return "today"
+        case .allItems, .none:   return "allItems"
+        case .search:            return "search"
+        case .bookmarks:         return "bookmarks"
+        case .feed(let feed):    return "feed.\(feed.url)"
+        case .feedGroup(let g):  return "group.\(g.name)"
+        }
+    }
+
+    private var showUnreadOnly: Bool { unreadFilters[selectionKey] ?? false }
+    private var unreadFilterBinding: Binding<Bool> {
+        Binding(
+            get: { unreadFilters[selectionKey] ?? false },
+            set: {
+                unreadFilters[selectionKey] = $0
+                var dict = UserDefaults.standard.dictionary(forKey: "unreadFilters") as? [String: Bool] ?? [:]
+                dict[selectionKey] = $0
+                UserDefaults.standard.set(dict, forKey: "unreadFilters")
+            }
+        )
+    }
+
+    private var hasUnread: Bool { filteredItems.contains { !$0.isRead } }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            // Inline filter bar — anchored to the list column
+            if selection != .search || !searchQuery.isEmpty {
+                HStack(spacing: 8) {
+                    if selection != .bookmarks {
+                        Picker("Filter", selection: unreadFilterBinding) {
+                            Text("All").tag(false)
+                            Text("Unread").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .frame(width: 120)
+                    }
+                    Spacer()
+                    if hasUnread {
+                        Button("Mark All Read") {
+                            filteredItems.forEach { $0.isRead = true }
+                        }
+                        .buttonStyle(.plain)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.bar)
+
+                Divider()
+            }
+
+            // Content
             if selection == .search && searchQuery.isEmpty {
                 ContentUnavailableView("Search Articles", systemImage: "magnifyingglass",
                                        description: Text("Type in the search bar above to find articles."))
@@ -40,7 +99,7 @@ struct ItemGridView: View {
                                 }
                                 Divider()
                                 Button("Delete Article", role: .destructive) {
-                                    item.isHidden = true
+                                    item.userDeleted = true
                                 }
                             }
                     }
@@ -52,19 +111,8 @@ struct ItemGridView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle(navigationTitle)
-        .toolbar {
-            if selection != .bookmarks {
-                ToolbarItem(placement: .automatic) {
-                    Picker("Filter", selection: $showUnreadOnly) {
-                        Text("All").tag(false)
-                        Text("Unread").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 120)
-                }
-            }
-        }
     }
 
     // MARK: - Filtering
@@ -72,7 +120,15 @@ struct ItemGridView: View {
     private var filteredItems: [FeedItem] {
         let base: [FeedItem]
 
-        let visible = allItems.filter { !$0.isHidden }
+        let retentionCutoff: Date? = retentionDays > 0
+            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
+            : nil
+
+        let visible = allItems.filter { item in
+            guard !item.isHidden && !item.userDeleted else { return false }
+            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
+            return (item.publishedAt ?? item.createdAt) >= cutoff
+        }
 
         if !searchQuery.isEmpty {
             let q = searchQuery.lowercased()
@@ -101,7 +157,7 @@ struct ItemGridView: View {
             let feedItems = visible.filter { $0.feed?.persistentModelID == feed.persistentModelID }
             base = showUnreadOnly ? feedItems.filter(unreadFilter) : feedItems
         case .feedGroup(let group):
-            let feedIDs = Set(group.feeds.map(\.persistentModelID))
+            let feedIDs = Set((group.feeds ?? []).map(\.persistentModelID))
             let groupItems = visible.filter { item in
                 guard let f = item.feed else { return false }
                 return feedIDs.contains(f.persistentModelID)

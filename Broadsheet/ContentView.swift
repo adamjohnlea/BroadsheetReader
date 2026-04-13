@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import AppKit
+import UserNotifications
 
 struct ContentView: View {
     @State private var sidebarSelection: SidebarItem? = .today
@@ -12,8 +14,17 @@ struct ContentView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Query private var allFeeds: [Feed]
+    @Query private var allItems: [FeedItem]
     @Query(sort: \FeedGroup.sortOrder) private var feedGroups: [FeedGroup]
+
+    private var totalUnreadCount: Int {
+        allItems.filter { !$0.isHidden && !$0.userDeleted && !$0.isRead }.count
+    }
     @AppStorage("refreshIntervalMinutes") private var refreshInterval = 30
+    @AppStorage("hasSeededFeeds") private var hasSeededFeeds = false
+    @State private var showingStarterFeeds = false
+    @State private var importError: String?
+    @State private var showingImportError = false
 
     var body: some View {
         NavigationSplitView {
@@ -36,10 +47,16 @@ struct ContentView: View {
         .focusedValue(\.navigateAction,   { item in sidebarSelection = item })
         .focusedValue(\.importOPMLAction, { isImportingOPML = true })
         .focusedValue(\.exportOPMLAction, { triggerExport() })
-        // On-launch refresh
+        // On-launch refresh + first-run seeding prompt
         .task {
-            guard !allFeeds.isEmpty else { return }
-            await FeedFetcher.shared.refreshAll(feeds: allFeeds, context: modelContext)
+            if !hasSeededFeeds && allFeeds.isEmpty {
+                showingStarterFeeds = true
+            } else if !allFeeds.isEmpty {
+                await FeedFetcher.shared.refreshAll(feeds: allFeeds, context: modelContext)
+            }
+        }
+        .sheet(isPresented: $showingStarterFeeds) {
+            StarterFeedsView()
         }
         // Background refresh (restarts when interval changes)
         .task(id: refreshInterval) {
@@ -65,6 +82,20 @@ struct ContentView: View {
             contentType: .xml,
             defaultFilename: "Broadsheet Feeds.opml"
         ) { _ in }
+        // Update dock badge whenever unread count changes.
+        // Persists the count so AppDelegate can re-apply it after auth resolves.
+        // Uses both NSDockTile and UNUserNotificationCenter for reliability.
+        .task(id: totalUnreadCount) {
+            let count = totalUnreadCount
+            UserDefaults.standard.set(count, forKey: "lastUnreadCount")
+            try? await UNUserNotificationCenter.current().setBadgeCount(count)
+            NSApplication.shared.dockTile.badgeLabel = count > 0 ? "\(count)" : nil
+        }
+        .alert("Import Failed", isPresented: $showingImportError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importError ?? "The OPML file could not be read.")
+        }
     }
 
     // MARK: - OPML
@@ -78,9 +109,22 @@ struct ContentView: View {
 
     @MainActor
     private func handleImport(result: Result<[URL], Error>) async {
-        guard case .success(let urls) = result,
-              let url = urls.first,
-              let content = try? String(contentsOf: url, encoding: .utf8) else { return }
+        guard case .success(let urls) = result, let url = urls.first else {
+            if case .failure(let error) = result {
+                importError = error.localizedDescription
+                showingImportError = true
+            }
+            return
+        }
+
+        let content: String
+        do {
+            content = try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            importError = "Could not read the file: \(error.localizedDescription)"
+            showingImportError = true
+            return
+        }
 
         let imported = OPMLHandler.parse(content)
         var groupCache: [String: FeedGroup] = [:]
@@ -101,7 +145,7 @@ struct ContentView: View {
         let existingURLs = Set(allFeeds.map(\.url))
         for item in imported where !existingURLs.contains(item.url) {
             let group = item.groupName.flatMap { groupCache[$0] }
-            try? await FeedFetcher.shared.addFeed(urlString: item.url, group: group, context: modelContext)
+            _ = try? await FeedFetcher.shared.addFeed(urlString: item.url, group: group, context: modelContext)
         }
     }
 }

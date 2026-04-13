@@ -4,13 +4,12 @@ import SwiftData
 @Model
 final class Bookmark {
     var note: String?
-    var createdAt: Date
+    var createdAt: Date = Date()
 
     var item: FeedItem?
 
     init(item: FeedItem, note: String? = nil) {
         self.item = item
         self.note = note
-        self.createdAt = Date()
     }
 }
