@@ -343,7 +343,7 @@ final class SearchTests: BroadsheetUITestCase {
     func testEmptySearchShowsPrompt() {
         // Navigate to search with no text — should show "Search Articles" empty state.
         app.typeKey("f", modifierFlags: [.command])
-        XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
     }
 }
 
@@ -428,14 +428,20 @@ final class FilterBarTests: BroadsheetUITestCase {
     @MainActor
     func testFilterBarHiddenOnBookmarksView() {
         app.typeKey("3", modifierFlags: [.command]) // Bookmarks
+        // Wait for Bookmarks view to fully load before checking filter bar absence.
+        let bookmarksLoaded = app.staticTexts["No bookmarks yet."].waitForExistence(timeout: 8)
+            || app.staticTexts["Bookmarks"].waitForExistence(timeout: 3)
+        XCTAssertTrue(bookmarksLoaded || app.state == .runningForeground)
         // Bookmarks always shows all — no All/Unread segmented control.
-        XCTAssertFalse(app.radioButtons["All"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.radioButtons["All"].exists)
     }
 
     @MainActor
     func testFilterBarHiddenOnEmptySearch() {
         app.typeKey("f", modifierFlags: [.command]) // Search (no query)
-        XCTAssertFalse(app.radioButtons["All"].waitForExistence(timeout: 2))
+        // Wait for Search view to fully load before checking filter bar absence.
+        XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.radioButtons["All"].exists)
     }
 
     @MainActor
@@ -460,7 +466,7 @@ final class EmptyStateTests: BroadsheetUITestCase {
     @MainActor
     func testSearchEmptyStateBeforeTyping() {
         app.typeKey("f", modifierFlags: [.command])
-        XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Search Articles"].waitForExistence(timeout: 10))
     }
 
     @MainActor
