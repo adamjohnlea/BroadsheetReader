@@ -119,6 +119,7 @@ private struct ArticleReader: View {
                     .foregroundStyle(item.bookmark != nil ? .accent : .secondary)
                 }
                 .help(item.bookmark != nil ? "Remove Bookmark" : "Add Bookmark")
+                .buttonStyle(.glass)
 
                 Button {
                     item.isRead.toggle()
@@ -129,6 +130,7 @@ private struct ArticleReader: View {
                     )
                 }
                 .help(item.isRead ? "Mark as Unread" : "Mark as Read")
+                .buttonStyle(.glass)
 
                 if let url = URL(string: item.url) {
                     Button {
@@ -137,6 +139,7 @@ private struct ArticleReader: View {
                         Label("Open in Browser", systemImage: "safari")
                     }
                     .help("Open in Browser")
+                    .buttonStyle(.glass)
                 }
             }
         }
