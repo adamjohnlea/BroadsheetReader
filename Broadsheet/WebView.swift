@@ -28,11 +28,12 @@ struct WebView: NSViewRepresentable {
         html {
             font-family: -apple-system, system-ui, sans-serif;
             font-size: 16px;
-            line-height: 1.65;
+            line-height: 1.7;
         }
         body {
-            margin: 0;
+            margin: 0 auto;
             padding: 0 4px 40px 4px;
+            max-width: 680px;
             color: #1a1a1a;
             background: transparent;
             word-wrap: break-word;
@@ -44,7 +45,7 @@ struct WebView: NSViewRepresentable {
             pre  { background: rgba(255,255,255,.07) !important; }
             code { background: rgba(255,255,255,.07) !important; }
         }
-        h1,h2,h3,h4 { line-height: 1.25; }
+        h1,h2,h3,h4 { font-family: ui-serif, Georgia, serif; line-height: 1.25; font-weight: 700; }
         a  { color: #16a34a; }
         img, video { max-width: 100%; height: auto; border-radius: 6px; }
         figure { margin: 0; }

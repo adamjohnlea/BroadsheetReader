@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
-@testable import Broadsheet
+@testable import Broadsheet_Reader
 
 // MARK: - Feed Parser Tests
 

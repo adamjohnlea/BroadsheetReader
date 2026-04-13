@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Broadsheet** is a native macOS RSS reader app built with SwiftUI and SwiftData. An AI/tech news reader inspired by Reeder 5, with feed groups, read/unread tracking, bookmarks with notes, full-text search, OPML import/export, and iCloud sync.
+**Broadsheet Reader** is a native macOS RSS reader app built with SwiftUI and SwiftData. An AI/tech news reader inspired by Reeder 5, with feed groups, read/unread tracking, bookmarks with notes, full-text search, OPML import/export, and iCloud sync.
 
 ## Build Commands
 

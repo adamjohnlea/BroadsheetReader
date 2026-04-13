@@ -12,7 +12,8 @@ struct ArticleDetailView: View {
                 ArticleReader(item: item)
                     .id(item.persistentModelID)  // force re-render on item change
             } else {
-                ContentUnavailableView("Select an Article", systemImage: "doc.text")
+                ContentUnavailableView("Select an Article", systemImage: "newspaper",
+                                       description: Text("Choose something to read from the list."))
             }
         }
     }
@@ -25,12 +26,23 @@ private struct ArticleReader: View {
     @Environment(\.modelContext) private var modelContext
     @State private var noteText: String = ""
 
+    // Newspaper dateline: "13 April 2026"
+    private static let dateline: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMMM yyyy"
+        return f
+    }()
+
+    static func datelineString(from date: Date) -> String {
+        dateline.string(from: date)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             VStack(alignment: .leading, spacing: 10) {
                 Text(item.title)
-                    .font(.title2)
+                    .font(.system(.title2, design: .serif))
                     .fontWeight(.bold)
                     .textSelection(.enabled)
 
@@ -47,9 +59,10 @@ private struct ArticleReader: View {
                     }
                     Spacer()
                     if let date = item.publishedAt {
-                        Text(date, style: .date)
+                        Text(Self.datelineString(from: date))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.tertiary)
+                            .textCase(.uppercase)
                     }
                 }
             }
@@ -103,6 +116,7 @@ private struct ArticleReader: View {
                         item.bookmark != nil ? "Remove Bookmark" : "Bookmark",
                         systemImage: item.bookmark != nil ? "bookmark.fill" : "bookmark"
                     )
+                    .foregroundStyle(item.bookmark != nil ? .accent : .secondary)
                 }
                 .help(item.bookmark != nil ? "Remove Bookmark" : "Add Bookmark")
 
@@ -150,7 +164,7 @@ private struct BookmarkNoteEditor: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "bookmark.fill")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.accent)
                 .font(.caption)
                 .padding(.top, 3)
 

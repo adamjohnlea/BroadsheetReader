@@ -1,4 +1,4 @@
-# Broadsheet
+# Broadsheet Reader
 
 A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and tech news, inspired by the clean aesthetic of Reeder 5.
 

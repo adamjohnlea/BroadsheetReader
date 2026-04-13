@@ -73,10 +73,10 @@ struct ItemGridView: View {
 
             // Content
             if selection == .search && searchQuery.isEmpty {
-                ContentUnavailableView("Search Articles", systemImage: "magnifyingglass",
-                                       description: Text("Type in the search bar above to find articles."))
+                ContentUnavailableView("Search Articles", systemImage: "text.magnifyingglass",
+                                       description: Text("Search across headlines, summaries, and full articles."))
             } else if filteredItems.isEmpty {
-                ContentUnavailableView("No Articles", systemImage: "newspaper",
+                ContentUnavailableView(emptyTitle, systemImage: emptyIcon,
                                        description: Text(emptyMessage))
             } else {
                 List(selection: $selectedItem) {
@@ -179,13 +179,33 @@ struct ItemGridView: View {
         }
     }
 
+    private var emptyTitle: String {
+        switch selection {
+        case .today:            return "All Caught Up"
+        case .allItems, .none:  return "Nothing Here Yet"
+        case .bookmarks:        return "No Bookmarks"
+        case .search:           return "No Results"
+        case .feed, .feedGroup: return "No Articles"
+        }
+    }
+
+    private var emptyIcon: String {
+        switch selection {
+        case .today:            return "sun.max"
+        case .allItems, .none:  return "newspaper"
+        case .bookmarks:        return "bookmark"
+        case .search:           return "magnifyingglass"
+        case .feed, .feedGroup: return "newspaper"
+        }
+    }
+
     private var emptyMessage: String {
         switch selection {
-        case .today:            return "No articles published today."
-        case .allItems, .none:  return "No articles yet."
-        case .bookmarks:        return "No bookmarks yet."
-        case .search:           return "No results."
-        case .feed, .feedGroup: return "No articles yet."
+        case .today:            return "Nothing new today. Enjoy the quiet."
+        case .allItems, .none:  return "Add some feeds to start reading."
+        case .bookmarks:        return "Bookmark articles to save them here."
+        case .search:           return "Try a different search term."
+        case .feed, .feedGroup: return "New articles will appear here after the next refresh."
         }
     }
 
@@ -206,8 +226,34 @@ struct ItemGridView: View {
 private struct ArticleRow: View {
     let item: FeedItem
 
+    // Newspaper-style dateline: "13 APR 2026" for older, "2:34 PM" for today
+    private static let datelineFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.doesRelativeDateFormatting = false
+        return f
+    }()
+
+    private static func datelineFormatter(for date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) {
+            datelineFormatter.dateFormat = "h:mm a"
+        } else if cal.isDate(date, equalTo: Date(), toGranularity: .year) {
+            datelineFormatter.dateFormat = "d MMM"
+        } else {
+            datelineFormatter.dateFormat = "d MMM yyyy"
+        }
+        return datelineFormatter.string(from: date)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 8) {
+            // Unread indicator dot
+            Circle()
+                .fill(item.isRead ? .clear : .accent)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 4) {
             // Source + date
             HStack(spacing: 4) {
                 FeedFavicon(urlString: item.feed?.faviconURL)
@@ -217,16 +263,16 @@ private struct ArticleRow: View {
                     .lineLimit(1)
                 Spacer()
                 if let date = item.publishedAt {
-                    Text(date, style: .relative)
+                    Text(Self.datelineFormatter(for: date))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                        .textCase(.uppercase)
                 }
             }
 
-            // Title
+            // Title — serif font gives the list an editorial, newspaper feel
             Text(item.title)
-                .font(.subheadline)
+                .font(.system(.subheadline, design: .serif))
                 .fontWeight(item.isRead ? .regular : .semibold)
                 .foregroundStyle(item.isRead ? .secondary : .primary)
                 .lineLimit(2)
@@ -244,13 +290,15 @@ private struct ArticleRow: View {
                 HStack(spacing: 4) {
                     Image(systemName: "bookmark.fill")
                         .font(.system(size: 9))
+                        .foregroundStyle(.accent)
                     Text(note)
                         .font(.caption)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                .foregroundStyle(.secondary)
             }
-        }
+        } // VStack
+        } // HStack
         .padding(.vertical, 6)
     }
 }

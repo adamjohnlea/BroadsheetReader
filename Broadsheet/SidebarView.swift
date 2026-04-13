@@ -80,7 +80,7 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("Broadsheet")
+        .navigationTitle("Broadsheet Reader")
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Menu {
@@ -191,7 +191,13 @@ private struct FeedGroupSection: View {
                 Text(group.name).fontWeight(.medium)
                 Spacer()
                 if unreadCount > 0 {
-                    Text("\(unreadCount)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    Text("\(unreadCount)")
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.accent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(.accent.opacity(0.12), in: Capsule())
                 }
             }
             // Context menu scoped to the group header only — does NOT intercept
