@@ -63,5 +63,10 @@ struct BroadsheetApp: App {
         Settings {
             SettingsView()
         }
+
+        Window("Broadsheet Reader Help", id: "help") {
+            HelpView()
+        }
+        .defaultSize(width: 700, height: 500)
     }
 }

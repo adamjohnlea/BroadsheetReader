@@ -29,6 +29,9 @@ private struct PreviousArticleActionKey: FocusedValueKey {
 private struct ShowWalkthroughActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
+private struct ShowHelpActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
 
 extension FocusedValues {
     var refreshAction: (() async -> Void)? {
@@ -67,6 +70,10 @@ extension FocusedValues {
         get { self[ShowWalkthroughActionKey.self] }
         set { self[ShowWalkthroughActionKey.self] = newValue }
     }
+    var showHelpAction: (() -> Void)? {
+        get { self[ShowHelpActionKey.self] }
+        set { self[ShowHelpActionKey.self] = newValue }
+    }
 }
 
 // MARK: - Commands
@@ -81,6 +88,7 @@ struct BroadsheetCommands: Commands {
     @FocusedValue(\.nextArticleAction)      var nextArticle
     @FocusedValue(\.previousArticleAction) var previousArticle
     @FocusedValue(\.showWalkthroughAction) var showWalkthrough
+    @FocusedValue(\.showHelpAction)        var showHelp
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -118,9 +126,11 @@ struct BroadsheetCommands: Commands {
                 .keyboardShortcut(.upArrow, modifiers: .command)
         }
 
-        CommandGroup(before: .help) {
-            Button("Welcome to Broadsheet Reader") { showWalkthrough?() }
+        CommandGroup(replacing: .help) {
+            Button("Broadsheet Reader Help") { showHelp?() }
+                .keyboardShortcut("?", modifiers: .command)
             Divider()
+            Button("Welcome to Broadsheet Reader") { showWalkthrough?() }
         }
     }
 }

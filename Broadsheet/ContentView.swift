@@ -27,6 +27,7 @@ struct ContentView: View {
     @State private var showingImportError = false
     @AppStorage("hasSeenWalkthrough") private var hasSeenWalkthrough = false
     @State private var showingWalkthrough = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
@@ -50,6 +51,7 @@ struct ContentView: View {
         .focusedValue(\.importOPMLAction,   { isImportingOPML = true })
         .focusedValue(\.exportOPMLAction,   { triggerExport() })
         .focusedValue(\.showWalkthroughAction, { showingWalkthrough = true })
+        .focusedValue(\.showHelpAction, { openWindow(id: "help") })
         // On-launch refresh + first-run seeding prompt
         .task {
             if !hasSeededFeeds && allFeeds.isEmpty {
