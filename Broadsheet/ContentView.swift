@@ -25,6 +25,8 @@ struct ContentView: View {
     @State private var showingStarterFeeds = false
     @State private var importError: String?
     @State private var showingImportError = false
+    @AppStorage("hasSeenWalkthrough") private var hasSeenWalkthrough = false
+    @State private var showingWalkthrough = false
 
     var body: some View {
         NavigationSplitView {
@@ -44,9 +46,10 @@ struct ContentView: View {
             ArticleDetailView(item: selectedItem)
         }
         // Expose actions to menu bar commands
-        .focusedValue(\.navigateAction,   { item in sidebarSelection = item })
-        .focusedValue(\.importOPMLAction, { isImportingOPML = true })
-        .focusedValue(\.exportOPMLAction, { triggerExport() })
+        .focusedValue(\.navigateAction,       { item in sidebarSelection = item })
+        .focusedValue(\.importOPMLAction,   { isImportingOPML = true })
+        .focusedValue(\.exportOPMLAction,   { triggerExport() })
+        .focusedValue(\.showWalkthroughAction, { showingWalkthrough = true })
         // On-launch refresh + first-run seeding prompt
         .task {
             if !hasSeededFeeds && allFeeds.isEmpty {
@@ -57,6 +60,15 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingStarterFeeds) {
             StarterFeedsView()
+        }
+        .sheet(isPresented: $showingWalkthrough) {
+            WalkthroughView()
+        }
+        .onAppear {
+            if !hasSeenWalkthrough {
+                hasSeenWalkthrough = true
+                showingWalkthrough = true
+            }
         }
         // Background refresh (restarts when interval changes)
         .task(id: refreshInterval) {

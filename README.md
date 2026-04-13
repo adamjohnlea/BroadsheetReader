@@ -12,6 +12,7 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 - OPML import and export with full group structure preservation
 - Starter feed library with curated AI/tech sources for first-run onboarding
 - Per-feed error tracking with UI indicators
+- Guided walkthrough on first launch (also available from Help menu)
 
 ### Reading
 - Three-column layout: sidebar, article list, and article detail

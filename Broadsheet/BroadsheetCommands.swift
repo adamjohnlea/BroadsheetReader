@@ -26,6 +26,9 @@ private struct NextArticleActionKey: FocusedValueKey {
 private struct PreviousArticleActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
+private struct ShowWalkthroughActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
 
 extension FocusedValues {
     var refreshAction: (() async -> Void)? {
@@ -60,6 +63,10 @@ extension FocusedValues {
         get { self[PreviousArticleActionKey.self] }
         set { self[PreviousArticleActionKey.self] = newValue }
     }
+    var showWalkthroughAction: (() -> Void)? {
+        get { self[ShowWalkthroughActionKey.self] }
+        set { self[ShowWalkthroughActionKey.self] = newValue }
+    }
 }
 
 // MARK: - Commands
@@ -71,8 +78,9 @@ struct BroadsheetCommands: Commands {
     @FocusedValue(\.navigateAction)   var navigate
     @FocusedValue(\.importOPMLAction)    var importOPML
     @FocusedValue(\.exportOPMLAction)    var exportOPML
-    @FocusedValue(\.nextArticleAction)    var nextArticle
+    @FocusedValue(\.nextArticleAction)      var nextArticle
     @FocusedValue(\.previousArticleAction) var previousArticle
+    @FocusedValue(\.showWalkthroughAction) var showWalkthrough
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -108,6 +116,10 @@ struct BroadsheetCommands: Commands {
                 .keyboardShortcut(.downArrow, modifiers: .command)
             Button("Previous Article") { previousArticle?() }
                 .keyboardShortcut(.upArrow, modifiers: .command)
+        }
+
+        CommandGroup(replacing: .help) {
+            Button("Welcome to Broadsheet Reader") { showWalkthrough?() }
         }
     }
 }
