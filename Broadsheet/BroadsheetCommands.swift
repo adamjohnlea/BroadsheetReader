@@ -20,6 +20,12 @@ private struct ImportOPMLActionKey: FocusedValueKey {
 private struct ExportOPMLActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
+private struct NextArticleActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+private struct PreviousArticleActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
 
 extension FocusedValues {
     var refreshAction: (() async -> Void)? {
@@ -46,6 +52,14 @@ extension FocusedValues {
         get { self[ExportOPMLActionKey.self] }
         set { self[ExportOPMLActionKey.self] = newValue }
     }
+    var nextArticleAction: (() -> Void)? {
+        get { self[NextArticleActionKey.self] }
+        set { self[NextArticleActionKey.self] = newValue }
+    }
+    var previousArticleAction: (() -> Void)? {
+        get { self[PreviousArticleActionKey.self] }
+        set { self[PreviousArticleActionKey.self] = newValue }
+    }
 }
 
 // MARK: - Commands
@@ -55,8 +69,10 @@ struct BroadsheetCommands: Commands {
     @FocusedValue(\.addFeedAction)    var addFeedAction
     @FocusedValue(\.newGroupAction)   var newGroupAction
     @FocusedValue(\.navigateAction)   var navigate
-    @FocusedValue(\.importOPMLAction) var importOPML
-    @FocusedValue(\.exportOPMLAction) var exportOPML
+    @FocusedValue(\.importOPMLAction)    var importOPML
+    @FocusedValue(\.exportOPMLAction)    var exportOPML
+    @FocusedValue(\.nextArticleAction)    var nextArticle
+    @FocusedValue(\.previousArticleAction) var previousArticle
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -85,6 +101,13 @@ struct BroadsheetCommands: Commands {
                 .keyboardShortcut("3", modifiers: .command)
             Button("Search")          { navigate?(.search) }
                 .keyboardShortcut("f", modifiers: .command)
+
+            Divider()
+
+            Button("Next Article")     { nextArticle?() }
+                .keyboardShortcut(.downArrow, modifiers: .command)
+            Button("Previous Article") { previousArticle?() }
+                .keyboardShortcut(.upArrow, modifiers: .command)
         }
     }
 }

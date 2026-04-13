@@ -111,6 +111,29 @@ struct ItemGridView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle(navigationTitle)
+        .focusedValue(\.nextArticleAction, { selectAdjacentArticle(direction: .next) })
+        .focusedValue(\.previousArticleAction, { selectAdjacentArticle(direction: .previous) })
+    }
+
+    // MARK: - Keyboard Navigation
+
+    private enum Direction { case next, previous }
+
+    private func selectAdjacentArticle(direction: Direction) {
+        let items = filteredItems
+        guard !items.isEmpty else { return }
+        guard let current = selectedItem,
+              let index = items.firstIndex(where: { $0.persistentModelID == current.persistentModelID }) else {
+            // No selection — select first or last depending on direction
+            selectedItem = direction == .next ? items.first : items.last
+            return
+        }
+        switch direction {
+        case .next:
+            if index + 1 < items.count { selectedItem = items[index + 1] }
+        case .previous:
+            if index - 1 >= 0 { selectedItem = items[index - 1] }
+        }
     }
 
     // MARK: - Filtering

@@ -15,11 +15,13 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 
 ### Reading
 - Three-column layout: sidebar, article list, and article detail
-- Read/unread tracking with unread count badges in the sidebar
+- Read/unread tracking with unread count badges and green indicator dots
+- Keyboard navigation: `Cmd+↓` / `Cmd+↑` to move between articles
 - Configurable auto-mark-as-read on article open
 - "Mark All Read" per feed, group, or entire view
-- Full HTML article rendering with dark mode support
+- Full HTML article rendering with dark mode support and serif headings
 - Filter toggle between All and Unread items
+- Share articles via the system share sheet (AirDrop, Messages, Mail, etc.)
 
 ### Search
 - Full-text search across article titles, summaries, content, and feed names
@@ -55,6 +57,8 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 | `Cmd+2` | Go to All Items |
 | `Cmd+3` | Go to Bookmarks |
 | `Cmd+F` | Search |
+| `Cmd+↓` | Next Article |
+| `Cmd+↑` | Previous Article |
 | `Cmd+,` | Settings |
 
 ## Settings

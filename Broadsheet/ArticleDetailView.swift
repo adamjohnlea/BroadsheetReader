@@ -133,6 +133,12 @@ private struct ArticleReader: View {
                 .buttonStyle(.glass)
 
                 if let url = URL(string: item.url) {
+                    ShareLink(item: url, subject: Text(item.title)) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .help("Share Article")
+                    .buttonStyle(.glass)
+
                     Button {
                         NSWorkspace.shared.open(url)
                     } label: {
