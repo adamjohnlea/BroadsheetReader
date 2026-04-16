@@ -163,14 +163,19 @@ final class SidebarNavigationTests: BroadsheetUITestCase {
 
 final class AddFeedSheetTests: BroadsheetUITestCase {
 
-    /// Opens the Add Feed sheet via the File menu for reliable CI execution.
+    /// Opens the Add Feed sheet via the toolbar + menu for reliable CI execution.
+    /// The + menu is always present and doesn't depend on FocusedValue wiring.
     private func openAddFeedSheet() {
-        focusSidebar()
-        let menuBar = app.menuBars.firstMatch
-        menuBar.menuBarItems["File"].click()
-        let item = menuBar.menuBarItems["File"].menus.menuItems["Add Feed…"]
-        if item.waitForExistence(timeout: 3) {
-            item.click()
+        // SwiftUI Menu in toolbar can render as popUpButton or menuButton
+        let addMenu = app.popUpButtons["Add"].exists
+            ? app.popUpButtons["Add"]
+            : app.menuButtons["Add"]
+        if addMenu.waitForExistence(timeout: 5) {
+            addMenu.click()
+            let menuItem = app.menuItems["Add Feed…"]
+            if menuItem.waitForExistence(timeout: 3) {
+                menuItem.click()
+            }
         }
         XCTAssertTrue(app.staticTexts["Add Feed"].waitForExistence(timeout: 10))
     }
