@@ -282,8 +282,12 @@ extension HelpTopic {
                 .p("Click the bookmark button in the article toolbar, or right-click an article and choose **Bookmark**. Bookmarked articles show a green bookmark icon in the list."),
             ]),
             HelpSection(heading: "Adding Notes", blocks: [
-                .p("When an article is bookmarked, a note editor appears below the article header. Type your thoughts — notes save automatically as you type."),
-                .p("Note snippets are visible in the article list, so you can see your annotations at a glance."),
+                .p("When an article is bookmarked, a collapsible annotations section appears below the article header. Type your thoughts in the note field (marked with a pencil icon) — notes save automatically as you type."),
+            ]),
+            HelpSection(heading: "Highlighting Text", blocks: [
+                .p("Select text in any article and click the **Highlight** button that appears. The passage is saved as a highlight (marked with a highlighter icon) in the annotations section. Each highlight can have its own note."),
+                .p("Highlighting an article automatically bookmarks it if it isn't already. Highlights are restored when you revisit the article."),
+                .tip("Highlighted text and highlight notes are included in search results, so you can find saved passages later."),
             ]),
             HelpSection(heading: "Viewing Bookmarks", blocks: [
                 .p("Click **Bookmarks** in the sidebar or press **⌘3** to see all your bookmarked articles. The bookmarks view always shows all bookmarks regardless of the read/unread filter."),

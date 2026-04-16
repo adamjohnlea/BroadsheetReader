@@ -1,8 +1,8 @@
 # Broadsheet Reader
 
-A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and tech news, inspired by the clean aesthetic of Reeder 5.
+A native macOS RSS reader built with SwiftUI and SwiftData. Clean, focused, and designed for thoughtful reading.
 
-![macOS](https://img.shields.io/badge/macOS-26.4+-black) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![SwiftUI](https://img.shields.io/badge/SwiftUI-black) ![SwiftData](https://img.shields.io/badge/SwiftData-black) ![Tests](https://img.shields.io/badge/tests-139-green)
+![macOS](https://img.shields.io/badge/macOS-26+-black) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![SwiftUI](https://img.shields.io/badge/SwiftUI-black) ![SwiftData](https://img.shields.io/badge/SwiftData-black) ![Tests](https://img.shields.io/badge/tests-139-green)
 
 ## Features
 
@@ -10,10 +10,10 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 - Add feeds by URL with automatic RSS/Atom autodiscovery
 - Organize feeds into collapsible groups with drag-and-drop reordering
 - OPML import and export with full group structure preservation
-- Starter feed library with curated AI/tech sources for first-run onboarding
+- Starter feed library for first-run onboarding
 - Per-feed error tracking with UI indicators
 - Guided walkthrough on first launch (also available from Help menu)
-- Built-in Apple Help Book with documentation for all features
+- Built-in help documentation for all features
 
 ### Reading
 - Three-column layout: sidebar, article list, and article detail
@@ -24,16 +24,25 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 - Full HTML article rendering with dark mode support and serif headings
 - Filter toggle between All and Unread items
 - Share articles via the system share sheet (AirDrop, Messages, Mail, etc.)
+- Liquid Glass accents on filter bar and toolbar
+
+### Highlights & Annotations
+- Select text in any article to save it as a highlight
+- Highlighted passages appear with green inline markers in the article
+- Each highlight can have its own note
+- Collapsible annotations section with visual distinction: pencil icon for notes, highlighter icon for highlights
+- Highlights auto-bookmark the article if not already bookmarked
+- Highlighted text and notes are included in search results
 
 ### Search
-- Full-text search across article titles, summaries, content, and feed names
+- Full-text search across article titles, summaries, content, feed names, highlights, and notes
 - Case-insensitive, instant client-side filtering
 
 ### Bookmarks
 - Bookmark any article with an optional user note
 - Inline note editor with auto-save
-- Dedicated bookmarks view (exempt from unread and retention filters)
-- Note snippets shown in the article list
+- Dedicated bookmarks view with total count badge (exempt from retention filters)
+- Bookmark indicator in the article list
 
 ### Background Refresh
 - Configurable automatic refresh interval: 15, 30, or 60 minutes (or manual only)
@@ -46,6 +55,7 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 
 ### Article Retention
 - Configurable retention window: 7, 30, 90 days, or forever
+- Sidebar counts reflect the active retention setting
 - Bookmarked articles are always preserved regardless of retention setting
 - Soft-delete support — deleted articles stay hidden even after re-sync
 
@@ -58,10 +68,12 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 | `Cmd+1` | Go to Today |
 | `Cmd+2` | Go to All Items |
 | `Cmd+3` | Go to Bookmarks |
+| `Cmd+4` | Go to Highlights |
 | `Cmd+F` | Search |
 | `Cmd+↓` | Next Article |
 | `Cmd+↑` | Previous Article |
 | `Cmd+,` | Settings |
+| `Cmd+?` | Help |
 
 ## Settings
 
@@ -76,14 +88,17 @@ A native macOS RSS reader built with SwiftUI and SwiftData. Designed for AI and 
 - **SwiftUI** for all views with `NavigationSplitView` three-column layout
 - **SwiftData** with `@Model` classes and `@Query`-driven reactive UI
 - **CloudKit** integration with optional relationships (required for CloudKit schema compatibility)
+- **WKWebView** with JavaScript bridge for article rendering and text highlighting
 - **Strict concurrency** with MainActor as the default isolation level
+- **Liquid Glass** design accents on toolbar and filter bar
 - No third-party dependencies — built entirely on Apple frameworks
 
 ### Data Models
 - `Feed` — RSS/Atom feed with URL, title, favicon, fetch state, and group association
 - `FeedGroup` — named group with sort order and collapse state
 - `FeedItem` — article with guid-based deduplication, read state, and soft-delete support
-- `Bookmark` — links a `FeedItem` to an optional user note
+- `Bookmark` — links a `FeedItem` to an optional user note, with cascade to highlights
+- `Highlight` — a highlighted text passage linked to a `Bookmark`, with optional note and text-matching context for restoration
 
 ### Feed Parsing
 - Custom `XMLParser`-based parser supporting both **RSS 2.0** and **Atom 1.0**
@@ -104,12 +119,13 @@ Requires Xcode and [xcbeautify](https://github.com/cpisciotta/xcbeautify) (`brew
 
 ```sh
 # Build
-xcodebuild -project Broadsheet/Broadsheet.xcodeproj \
+xcodebuild -project Broadsheet.xcodeproj \
   -scheme Broadsheet -destination 'platform=macOS' build | xcbeautify
 
 # Run unit tests
-xcodebuild -project Broadsheet/Broadsheet.xcodeproj \
-  -scheme BroadsheetTests -destination 'platform=macOS' test | xcbeautify
+xcodebuild -project Broadsheet.xcodeproj \
+  -scheme Broadsheet -destination 'platform=macOS' \
+  -only-testing:BroadsheetTests test | xcbeautify
 ```
 
 ## Tests
