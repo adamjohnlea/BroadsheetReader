@@ -17,8 +17,12 @@ struct ContentView: View {
     @Query private var allItems: [FeedItem]
     @Query(sort: \FeedGroup.sortOrder) private var feedGroups: [FeedGroup]
 
+    @AppStorage("retentionDays") private var retentionDays = 30
+
     private var totalUnreadCount: Int {
-        allItems.filter { !$0.isHidden && !$0.userDeleted && !$0.isRead }.count
+        RetentionFilter.visibleItems(allItems, retentionDays: retentionDays)
+            .filter { !$0.isRead }
+            .count
     }
     @AppStorage("refreshIntervalMinutes") private var refreshInterval = 30
     @AppStorage("hasSeededFeeds") private var hasSeededFeeds = false
