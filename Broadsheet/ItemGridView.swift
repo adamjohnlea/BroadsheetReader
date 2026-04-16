@@ -159,6 +159,10 @@ struct ItemGridView: View {
                     || ($0.summary?.lowercased().contains(q) ?? false)
                     || ($0.content?.lowercased().contains(q) ?? false)
                     || ($0.feed?.title.lowercased().contains(q) ?? false)
+                    || ($0.bookmark?.highlights ?? []).contains { h in
+                        h.selectedText.lowercased().contains(q)
+                        || (h.note?.lowercased().contains(q) ?? false)
+                    }
                 }
                 .sorted { ($0.publishedAt ?? $0.createdAt) > ($1.publishedAt ?? $1.createdAt) }
         }
@@ -306,17 +310,11 @@ private struct ArticleRow: View {
                     .lineLimit(2)
             }
 
-            // Bookmark note snippet
-            if let note = item.bookmark?.note, !note.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "bookmark.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.accent)
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+            // Bookmark indicator
+            if item.bookmark != nil {
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.accent)
             }
         } // VStack
         } // HStack

@@ -166,5 +166,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self], inMemory: true)
+        .modelContainer(for: [FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self, Highlight.self], inMemory: true)
 }

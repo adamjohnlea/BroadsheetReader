@@ -8,6 +8,9 @@ final class Bookmark {
 
     var item: FeedItem?
 
+    @Relationship(deleteRule: .cascade, inverse: \Highlight.bookmark)
+    var highlights: [Highlight]?
+
     init(item: FeedItem, note: String? = nil) {
         self.item = item
         self.note = note

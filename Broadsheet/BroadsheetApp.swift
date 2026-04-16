@@ -30,7 +30,7 @@ struct BroadsheetApp: App {
     static private(set) var iCloudSyncActive = false
 
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self])
+        let schema = Schema([FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self, Highlight.self])
 
         // Prefer CloudKit-backed store for sync across devices.
         let cloudConfig = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
