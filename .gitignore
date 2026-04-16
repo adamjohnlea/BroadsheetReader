@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcscmblueprint
+DerivedData/
+
+# Development artifacts
+macos-developer-doc.md
+generate_icons.py
+highlights-prototype.html
