@@ -42,18 +42,16 @@ struct ItemGridView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Inline filter bar — anchored to the list column
-            if selection != .search || !searchQuery.isEmpty {
+            // Inline filter bar — hidden for bookmarks (no unread filter needed)
+            if selection != .bookmarks && (selection != .search || !searchQuery.isEmpty) {
                 HStack(spacing: 8) {
-                    if selection != .bookmarks {
-                        Picker("Filter", selection: unreadFilterBinding) {
-                            Text("All").tag(false)
-                            Text("Unread").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .frame(width: 120)
+                    Picker("Filter", selection: unreadFilterBinding) {
+                        Text("All").tag(false)
+                        Text("Unread").tag(true)
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 120)
                     Spacer()
                     if hasUnread {
                         Button("Mark All Read") {

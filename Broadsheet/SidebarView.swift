@@ -33,13 +33,32 @@ struct SidebarView: View {
     @State private var showingNewGroup = false
     @State private var isRefreshing = false
 
+    @AppStorage("retentionDays") private var retentionDays = 30
+
     private var ungroupedFeeds: [Feed] { allFeeds.filter { $0.group == nil } }
+
+    /// Items visible after retention filtering (matches ItemGridView logic)
+    private var visibleItems: [FeedItem] {
+        let retentionCutoff: Date? = retentionDays > 0
+            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
+            : nil
+        return allItems.filter { item in
+            guard !item.isHidden && !item.userDeleted else { return false }
+            // Bookmarked items are always visible regardless of retention
+            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
+            return (item.publishedAt ?? item.createdAt) >= cutoff
+        }
+    }
+
     private var allUnreadCount: Int {
-        allItems.filter { !$0.isHidden && !$0.userDeleted && !$0.isRead }.count
+        visibleItems.filter { !$0.isRead }.count
     }
     private var todayUnreadCount: Int {
         let cutoff = Calendar.current.startOfDay(for: Date())
-        return allItems.filter { !$0.isHidden && !$0.userDeleted && !$0.isRead && ($0.publishedAt ?? $0.createdAt) >= cutoff }.count
+        return visibleItems.filter { !$0.isRead && ($0.publishedAt ?? $0.createdAt) >= cutoff }.count
+    }
+    private var bookmarkCount: Int {
+        visibleItems.filter { $0.bookmark != nil }.count
     }
 
     var body: some View {
@@ -52,6 +71,7 @@ struct SidebarView: View {
                     .badge(allUnreadCount)
                     .tag(SidebarItem.allItems)
                 Label("Bookmarks", systemImage: "bookmark")
+                    .badge(bookmarkCount)
                     .tag(SidebarItem.bookmarks)
                 Label("Search", systemImage: "magnifyingglass")
                     .tag(SidebarItem.search)
@@ -164,11 +184,18 @@ private struct FeedGroupSection: View {
     @State private var showingDelete = false
     @State private var newName = ""
 
+    @AppStorage("retentionDays") private var retentionDays = 30
+
     private var unreadCount: Int {
         let feedIDs = Set((group.feeds ?? []).map(\.persistentModelID))
+        let retentionCutoff: Date? = retentionDays > 0
+            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
+            : nil
         return allItems.filter { item in
             guard let f = item.feed else { return false }
-            return feedIDs.contains(f.persistentModelID) && !item.isHidden && !item.userDeleted && !item.isRead
+            guard feedIDs.contains(f.persistentModelID) && !item.isHidden && !item.userDeleted && !item.isRead else { return false }
+            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
+            return (item.publishedAt ?? item.createdAt) >= cutoff
         }.count
     }
     private var sortedFeeds: [Feed] { (group.feeds ?? []).sorted { $0.sortOrder < $1.sortOrder } }
@@ -237,8 +264,17 @@ private struct FeedRow: View {
     @Query private var allItems: [FeedItem]
     @State private var showingDelete = false
 
+    @AppStorage("retentionDays") private var retentionDays = 30
+
     private var unreadCount: Int {
-        allItems.filter { $0.feed?.persistentModelID == feed.persistentModelID && !$0.isHidden && !$0.userDeleted && !$0.isRead }.count
+        let retentionCutoff: Date? = retentionDays > 0
+            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
+            : nil
+        return allItems.filter { item in
+            guard item.feed?.persistentModelID == feed.persistentModelID && !item.isHidden && !item.userDeleted && !item.isRead else { return false }
+            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
+            return (item.publishedAt ?? item.createdAt) >= cutoff
+        }.count
     }
 
     var body: some View {
