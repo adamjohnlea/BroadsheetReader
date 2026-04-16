@@ -165,6 +165,10 @@ final class AddFeedSheetTests: BroadsheetUITestCase {
 
     /// Opens the Add Feed sheet via the toolbar + menu for reliable CI execution.
     /// The + menu is always present and doesn't depend on FocusedValue wiring.
+    ///
+    /// Note: two "Add Feed…" menu items exist in the accessibility hierarchy —
+    /// one in the File menu bar, one in the toolbar popover. We scope the query
+    /// to the toolbar menu descendants to avoid the ambiguous match error.
     private func openAddFeedSheet() {
         // SwiftUI Menu in toolbar can render as popUpButton or menuButton
         let addMenu = app.popUpButtons["Add"].exists
@@ -172,7 +176,10 @@ final class AddFeedSheetTests: BroadsheetUITestCase {
             : app.menuButtons["Add"]
         if addMenu.waitForExistence(timeout: 5) {
             addMenu.click()
-            let menuItem = app.menuItems["Add Feed…"]
+            // Scope to the toolbar menu's descendants (the popover that appears
+            // when clicking the toolbar button) — NOT the global app.menuItems
+            // which also includes the File menu's "Add Feed…" item.
+            let menuItem = addMenu.descendants(matching: .menuItem)["Add Feed…"]
             if menuItem.waitForExistence(timeout: 3) {
                 menuItem.click()
             }
