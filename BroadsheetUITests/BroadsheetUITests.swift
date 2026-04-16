@@ -163,11 +163,16 @@ final class SidebarNavigationTests: BroadsheetUITestCase {
 
 final class AddFeedSheetTests: BroadsheetUITestCase {
 
-    /// Opens the Add Feed sheet. Focuses the sidebar first so the FocusedValue action is live.
+    /// Opens the Add Feed sheet via the File menu for reliable CI execution.
     private func openAddFeedSheet() {
         focusSidebar()
-        app.typeKey("n", modifierFlags: [.command, .shift])
-        XCTAssertTrue(app.staticTexts["Add Feed"].waitForExistence(timeout: 5))
+        let menuBar = app.menuBars.firstMatch
+        menuBar.menuBarItems["File"].click()
+        let item = menuBar.menuBarItems["File"].menus.menuItems["Add Feed…"]
+        if item.waitForExistence(timeout: 3) {
+            item.click()
+        }
+        XCTAssertTrue(app.staticTexts["Add Feed"].waitForExistence(timeout: 10))
     }
 
     @MainActor
