@@ -10,16 +10,10 @@ private struct StarterFeed {
 }
 
 private let starterFeeds: [StarterFeed] = [
-    StarterFeed(title: "Hacker News",        url: "https://news.ycombinator.com/rss",                                          group: "AI / Tech"),
-    StarterFeed(title: "Simon Willison",      url: "https://simonwillison.net/atom/everything/",                                group: "AI / Tech"),
-    StarterFeed(title: "The Verge AI",        url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",         group: "AI / Tech"),
-    StarterFeed(title: "MIT Tech Review AI",  url: "https://www.technologyreview.com/feed/",                                    group: "AI / Tech"),
-    StarterFeed(title: "ArXiv cs.AI",         url: "https://rss.arxiv.org/rss/cs.AI",                                          group: "Research"),
-    StarterFeed(title: "ArXiv cs.LG",         url: "https://rss.arxiv.org/rss/cs.LG",                                          group: "Research"),
-    StarterFeed(title: "Interconnects",       url: "https://www.interconnects.ai/feed",                                         group: "Newsletters"),
-    StarterFeed(title: "The Batch",           url: "https://www.deeplearning.ai/the-batch/feed/",                               group: "Newsletters"),
-    StarterFeed(title: "r/MachineLearning",   url: "https://www.reddit.com/r/MachineLearning.rss",                              group: "Reddit"),
-    StarterFeed(title: "r/artificial",        url: "https://www.reddit.com/r/artificial.rss",                                   group: "Reddit"),
+    StarterFeed(title: "Apple Newsroom",  url: "https://www.apple.com/newsroom/rss-feed.rss",  group: "Apple"),
+    StarterFeed(title: "Daring Fireball", url: "https://daringfireball.net/feeds/main",        group: "Apple"),
+    StarterFeed(title: "MacRumors",       url: "http://feeds.macrumors.com/MacRumors-Front",   group: "Apple"),
+    StarterFeed(title: "Six Colors",      url: "https://feedpress.me/sixcolors",               group: "Apple"),
 ]
 
 // MARK: - View
@@ -37,7 +31,7 @@ struct StarterFeedsView: View {
     @State private var done = false
 
     private var groupedFeeds: [(group: String, feeds: [StarterFeed])] {
-        let groups = ["AI / Tech", "Research", "Newsletters", "Reddit"]
+        let groups = ["Apple"]
         return groups.map { g in (group: g, feeds: starterFeeds.filter { $0.group == g }) }
     }
 
@@ -45,7 +39,7 @@ struct StarterFeedsView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
             VStack(alignment: .leading, spacing: 6) {
-                Text("Welcome to Broadsheet")
+                Text("Welcome to Broadsheet Reader")
                     .font(.title2).fontWeight(.bold)
                 Text("Add some starter feeds to get going, or skip and add your own.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -153,7 +147,7 @@ struct StarterFeedsView: View {
         var groupCache: [String: FeedGroup] = [:]
 
         // Pre-create groups in sort order
-        let orderedGroups = ["AI / Tech", "Research", "Newsletters", "Reddit"]
+        let orderedGroups = ["Apple"]
         for groupName in orderedGroups {
             if let existing = feedGroups.first(where: { $0.name == groupName }) {
                 groupCache[groupName] = existing

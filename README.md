@@ -148,14 +148,11 @@ xcodebuild -project Broadsheet/Broadsheet.xcodeproj \
 
 ## Starter Feeds
 
-First launch offers a curated set of AI/tech feeds:
+First launch offers a curated set of Apple feeds:
 
 | Group | Feeds |
 |---|---|
-| AI / Tech | Hacker News, Simon Willison, The Verge AI, MIT Tech Review |
-| Research | ArXiv cs.AI, ArXiv cs.LG |
-| Newsletters | Interconnects, The Batch |
-| Reddit | r/MachineLearning, r/artificial |
+| Apple | Apple Newsroom, Daring Fireball, MacRumors, Six Colors |
 
 ## License
 
