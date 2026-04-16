@@ -37,17 +37,8 @@ struct SidebarView: View {
 
     private var ungroupedFeeds: [Feed] { allFeeds.filter { $0.group == nil } }
 
-    /// Items visible after retention filtering (matches ItemGridView logic)
     private var visibleItems: [FeedItem] {
-        let retentionCutoff: Date? = retentionDays > 0
-            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
-            : nil
-        return allItems.filter { item in
-            guard !item.isHidden && !item.userDeleted else { return false }
-            // Bookmarked items are always visible regardless of retention
-            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
-            return (item.publishedAt ?? item.createdAt) >= cutoff
-        }
+        RetentionFilter.visibleItems(allItems, retentionDays: retentionDays)
     }
 
     private var allUnreadCount: Int {
@@ -139,40 +130,6 @@ struct SidebarView: View {
     }
 }
 
-// MARK: - New Group Sheet
-
-private struct NewGroupView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \FeedGroup.sortOrder) private var feedGroups: [FeedGroup]
-    @State private var name = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("New Group").font(.headline)
-            TextField("Group name", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { save() }
-            HStack {
-                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.escape)
-                Spacer()
-                Button("Create") { save() }
-                    .keyboardShortcut(.return)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-        .padding(24)
-        .frame(width: 300)
-    }
-
-    private func save() {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        modelContext.insert(FeedGroup(name: trimmed, sortOrder: feedGroups.count))
-        dismiss()
-    }
-}
-
 // MARK: - Feed Group Section
 
 private struct FeedGroupSection: View {
@@ -188,15 +145,11 @@ private struct FeedGroupSection: View {
 
     private var unreadCount: Int {
         let feedIDs = Set((group.feeds ?? []).map(\.persistentModelID))
-        let retentionCutoff: Date? = retentionDays > 0
-            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
-            : nil
-        return allItems.filter { item in
-            guard let f = item.feed else { return false }
-            guard feedIDs.contains(f.persistentModelID) && !item.isHidden && !item.userDeleted && !item.isRead else { return false }
-            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
-            return (item.publishedAt ?? item.createdAt) >= cutoff
-        }.count
+        return RetentionFilter.visibleItems(allItems, retentionDays: retentionDays)
+            .filter { item in
+                guard let f = item.feed else { return false }
+                return feedIDs.contains(f.persistentModelID) && !item.isRead
+            }.count
     }
     private var sortedFeeds: [Feed] { (group.feeds ?? []).sorted { $0.sortOrder < $1.sortOrder } }
 
@@ -267,14 +220,9 @@ private struct FeedRow: View {
     @AppStorage("retentionDays") private var retentionDays = 30
 
     private var unreadCount: Int {
-        let retentionCutoff: Date? = retentionDays > 0
-            ? Date().addingTimeInterval(-Double(retentionDays) * 86400)
-            : nil
-        return allItems.filter { item in
-            guard item.feed?.persistentModelID == feed.persistentModelID && !item.isHidden && !item.userDeleted && !item.isRead else { return false }
-            guard item.bookmark == nil, let cutoff = retentionCutoff else { return true }
-            return (item.publishedAt ?? item.createdAt) >= cutoff
-        }.count
+        RetentionFilter.visibleItems(allItems, retentionDays: retentionDays)
+            .filter { $0.feed?.persistentModelID == feed.persistentModelID && !$0.isRead }
+            .count
     }
 
     var body: some View {
@@ -323,35 +271,3 @@ private struct FeedRow: View {
     }
 }
 
-// MARK: - Favicon
-
-struct FeedFavicon: View {
-    let urlString: String?
-
-    // Always load over HTTPS — ATS blocks http:// image loads.
-    // Existing stored URLs may be http://, so upgrade them here at display time.
-    private var secureURL: URL? {
-        guard let urlString,
-              var components = URLComponents(string: urlString) else { return nil }
-        components.scheme = "https"
-        return components.url
-    }
-
-    var body: some View {
-        Group {
-            if let url = secureURL {
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase { image.resizable().scaledToFit() }
-                    else { fallbackIcon }
-                }
-            } else {
-                fallbackIcon
-            }
-        }
-        .frame(width: 16, height: 16)
-    }
-
-    private var fallbackIcon: some View {
-        Image(systemName: "globe").foregroundStyle(.secondary)
-    }
-}
