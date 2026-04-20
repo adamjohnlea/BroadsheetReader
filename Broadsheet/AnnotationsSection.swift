@@ -147,7 +147,9 @@ private struct HighlightEntry: View {
                     if highlightNote.isEmpty {
                         Text("Add a note…")
                             .font(.caption)
-                            .foregroundStyle(.quaternary)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
+                            .padding(.top, 2)
                     }
                     TextEditor(text: $highlightNote)
                         .font(.caption)
