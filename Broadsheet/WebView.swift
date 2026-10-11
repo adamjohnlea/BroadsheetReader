@@ -254,6 +254,10 @@ struct WebView: NSViewRepresentable {
         }
     }
 
+    /// Website data for article pages: cookies, storage and cache kept in memory for this
+    /// session only, so feed and embed sites can't keep anything on disk between launches.
+    static let dataStore = WKWebsiteDataStore.nonPersistent()
+
     /// The configuration for article web views.
     ///
     /// Article JavaScript is off; the highlight script and the "broadsheet" message handler
@@ -273,6 +277,7 @@ struct WebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController = controller
         config.defaultWebpagePreferences.allowsContentJavaScript = false
+        config.websiteDataStore = dataStore
         return config
     }
 

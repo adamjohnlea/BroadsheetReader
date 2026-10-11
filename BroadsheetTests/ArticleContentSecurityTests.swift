@@ -363,3 +363,20 @@ struct ArticleJavaScriptPolicyTests {
         #expect(painted == "brown fox")
     }
 }
+
+// MARK: - Website Data
+
+@Suite("Article website data")
+@MainActor
+struct ArticleWebsiteDataTests {
+
+    @Test("Article pages keep website data in memory only, shared across article views")
+    func dataStoreIsPrivateAndShared() {
+        let coordinator = ArticleWebView.Coordinator(parent: ArticleWebView(html: "", baseURL: nil, highlights: []))
+        let first = ArticleWebView.configuration(for: coordinator)
+        let second = ArticleWebView.configuration(for: coordinator)
+
+        #expect(!first.websiteDataStore.isPersistent)
+        #expect(first.websiteDataStore === second.websiteDataStore)
+    }
+}
