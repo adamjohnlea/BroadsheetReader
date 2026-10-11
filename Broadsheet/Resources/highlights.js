@@ -1,6 +1,9 @@
 // Broadsheet Reader — Highlight System
 // Handles text selection, highlight creation, and restoration.
 //
+// Runs in the app's isolated content world (WebView.contentWorld), not the page world, so
+// scripts in the article can't call this code, replace it, or post to the "broadsheet" handler.
+//
 // Anchoring model: every position is expressed against one canonical text built from the
 // article's text nodes, with whitespace runs collapsed to a single space. The same text is
 // used when a highlight is saved and when it is restored, so offsets cannot drift.

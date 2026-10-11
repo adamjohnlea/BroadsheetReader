@@ -46,13 +46,14 @@ struct WebView: NSViewRepresentable {
         Coordinator(parent: self)
     }
 
-    func makeNSView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        let controller = WKUserContentController()
-        controller.add(context.coordinator, name: "broadsheet")
-        config.userContentController = controller
+    /// The isolated JavaScript world the highlight system runs in.
+    ///
+    /// Article content runs in the page world, so it can't see this world's globals or post to
+    /// its message handler. The DOM itself is shared by both worlds.
+    static let contentWorld = WKContentWorld.world(name: "Broadsheet")
 
-        let webView = WKWebView(frame: .zero, configuration: config)
+    func makeNSView(context: Context) -> WKWebView {
+        let webView = WKWebView(frame: .zero, configuration: Self.configuration(for: context.coordinator))
         webView.setValue(false, forKey: "drawsBackground")
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
@@ -65,16 +66,7 @@ struct WebView: NSViewRepresentable {
         // Only reload if HTML content actually changed to preserve highlight state
         if coordinator.lastLoadedHTML != html {
             coordinator.lastLoadedHTML = html
-            coordinator.isLoaded = false
-            let script: String
-            switch Self.highlightScript {
-            case .success(let source):
-                script = source
-            case .failure:
-                // The article still loads; the error is surfaced to the user in didFinish.
-                script = ""
-            }
-            webView.loadHTMLString(Self.document(body: html, script: script), baseURL: baseURL)
+            coordinator.load(html: html, baseURL: baseURL)
         } else if coordinator.isLoaded,
                   coordinator.appliedHighlightIDs != highlights.map(\.persistentModelID) {
             // Highlights were added or deleted; repaint so the page matches the model.
@@ -90,10 +82,75 @@ struct WebView: NSViewRepresentable {
         var lastLoadedHTML: String?
         var isLoaded = false
         var appliedHighlightIDs: [PersistentIdentifier]?
+        /// Opens links the reader clicks. Replaced in tests.
+        var openExternally: (URL) -> Void = { NSWorkspace.shared.open($0) }
         private var applyTask: Task<Void, Never>?
+        /// The URL of the article load in flight; the only main-frame navigation allowed.
+        private var pendingLoadURL: URL?
 
         init(parent: WebView) {
             self.parent = parent
+        }
+
+        /// Loads an article into the web view.
+        func load(html: String, baseURL: URL?) {
+            guard let webView else { return }
+            isLoaded = false
+            pendingLoadURL = baseURL ?? URL(string: "about:blank")
+            webView.loadHTMLString(WebView.document(body: html), baseURL: baseURL)
+        }
+
+        // MARK: Navigation Policy
+
+        /// Keeps the pane on the article: clicked links open in the browser, and anything else
+        /// the content tries (script redirects, meta refresh, form submissions) is cancelled.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     preferences: WKWebpagePreferences) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
+            guard let url = navigationAction.request.url else { return (.cancel, preferences) }
+
+            if let frame = navigationAction.targetFrame {
+                // Embeds such as video players load inside their own frame.
+                if !frame.isMainFrame {
+                    return (.allow, preferences)
+                }
+                if url == pendingLoadURL {
+                    pendingLoadURL = nil
+                    return (.allow, preferences)
+                }
+                // In-page links, such as footnotes, scroll the article.
+                if Self.isSameDocument(url, as: webView.url) {
+                    return (.allow, preferences)
+                }
+            }
+
+            switch navigationAction.navigationType {
+            case .linkActivated:
+                openLink(url)
+            case .formSubmitted, .formResubmitted:
+                // Forms can't be carried over to the browser; tell the reader nothing happened.
+                NSSound.beep()
+            default:
+                break
+            }
+            return (.cancel, preferences)
+        }
+
+        private func openLink(_ url: URL) {
+            guard let scheme = url.scheme?.lowercased(), ["http", "https", "mailto"].contains(scheme) else {
+                NSSound.beep()
+                return
+            }
+            openExternally(url)
+        }
+
+        /// Whether `url` points into `current` (the same page with a different `#fragment`).
+        private static func isSameDocument(_ url: URL, as current: URL?) -> Bool {
+            guard let current, url.fragment != nil else { return false }
+            var lhs = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            var rhs = URLComponents(url: current, resolvingAgainstBaseURL: false)
+            lhs?.fragment = nil
+            rhs?.fragment = nil
+            return lhs != nil && lhs == rhs
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -128,7 +185,9 @@ struct WebView: NSViewRepresentable {
         // Receive events from JavaScript
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            guard let body = message.body as? [String: Any],
+            // The handler is only installed in the highlight world; check anyway.
+            guard message.world == WebView.contentWorld, message.frameInfo.isMainFrame,
+                  let body = message.body as? [String: Any],
                   let type = body["type"] as? String else { return }
 
             switch type {
@@ -148,7 +207,6 @@ struct WebView: NSViewRepresentable {
                 let detail = body["message"] as? String ?? "Unknown error"
                 parent.onError?(HighlightError.scriptFailed(detail))
             default:
-                // Not a Broadsheet message; feed content can post to the same handler.
                 break
             }
         }
@@ -162,7 +220,7 @@ struct WebView: NSViewRepresentable {
     ///
     /// - Parameters:
     ///   - highlights: The highlights to paint.
-    ///   - webView: A web view showing a page built by ``document(body:script:)``.
+    ///   - webView: A web view built from ``configuration(for:)`` showing a page built by ``document(body:)``.
     /// - Returns: Indices into `highlights` of the highlights whose text was not found.
     /// - Throws: A WebKit error if the script fails, or ``HighlightError/unexpectedResult``.
     static func applyHighlights(_ highlights: [Highlight], in webView: WKWebView) async throws -> [Int] {
@@ -177,7 +235,7 @@ struct WebView: NSViewRepresentable {
         let result = try await webView.callAsyncJavaScript(
             "return BroadsheetHighlights.apply(highlights);",
             arguments: ["highlights": payload],
-            contentWorld: .page
+            contentWorld: contentWorld
         )
         guard let ids = result as? [String] else { throw HighlightError.unexpectedResult }
         return try ids.map { id in
@@ -186,6 +244,26 @@ struct WebView: NSViewRepresentable {
             }
             return index
         }
+    }
+
+    /// The configuration for article web views.
+    ///
+    /// The highlight script and the "broadsheet" message handler live in ``contentWorld``,
+    /// out of reach of scripts in the article.
+    ///
+    /// - Parameter coordinator: Receives messages from the highlight script.
+    /// - Returns: A configuration for a new web view.
+    static func configuration(for coordinator: Coordinator) -> WKWebViewConfiguration {
+        let controller = WKUserContentController()
+        controller.add(coordinator, contentWorld: contentWorld, name: "broadsheet")
+        // If the script is missing the article still loads; didFinish surfaces the error.
+        if case .success(let source) = highlightScript {
+            controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd,
+                                                  forMainFrameOnly: true, in: contentWorld))
+        }
+        let config = WKWebViewConfiguration()
+        config.userContentController = controller
+        return config
     }
 
     /// The highlight system's JavaScript, loaded once from the app bundle.
@@ -201,13 +279,11 @@ struct WebView: NSViewRepresentable {
     /// Builds the full HTML page for an article.
     ///
     /// The article body is wrapped in a root element that scopes highlight anchoring,
-    /// so the script and selection toolbar never count as article text.
+    /// so the selection toolbar never counts as article text.
     ///
-    /// - Parameters:
-    ///   - body: The article's HTML content.
-    ///   - script: The highlight system's JavaScript source.
+    /// - Parameter body: The article's HTML content.
     /// - Returns: A complete HTML document.
-    static func document(body: String, script: String) -> String {
+    static func document(body: String) -> String {
         """
         <!DOCTYPE html>
         <html>
@@ -291,7 +367,6 @@ struct WebView: NSViewRepresentable {
         </head>
         <body>
         <div id="broadsheet-article-root">\(body)</div>
-        <script>\(script)</script>
         </body>
         </html>
         """

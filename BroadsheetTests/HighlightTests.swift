@@ -6,22 +6,26 @@ import WebKit
 
 // MARK: - Test Page Harness
 
-/// Loads article HTML into a real WKWebView using the app's document builder and highlight script.
+/// Loads article HTML into a real WKWebView using the app's configuration, document builder,
+/// and highlight script.
 @MainActor
 private final class ArticlePage: NSObject, WKNavigationDelegate {
-    let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+    let webView: WKWebView
+    private let coordinator = WebView.Coordinator(parent: WebView(html: "", baseURL: nil, highlights: []))
     private var loadContinuation: CheckedContinuation<Void, Error>?
 
     override init() {
+        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600),
+                            configuration: WebView.configuration(for: coordinator))
         super.init()
         webView.navigationDelegate = self
     }
 
     func load(_ html: String) async throws {
-        let script = try WebView.highlightScript.get()
+        _ = try WebView.highlightScript.get()
         try await withCheckedThrowingContinuation { continuation in
             loadContinuation = continuation
-            webView.loadHTMLString(WebView.document(body: html, script: script), baseURL: nil)
+            webView.loadHTMLString(WebView.document(body: html), baseURL: nil)
         }
     }
 
@@ -53,7 +57,7 @@ private final class ArticlePage: NSObject, WKNavigationDelegate {
             """,
             arguments: ["start": start, "startOccurrence": startOccurrence,
                         "end": end, "endOccurrence": endOccurrence],
-            contentWorld: .page
+            contentWorld: WebView.contentWorld
         )
         guard let saved = result as? [String: String],
               let text = saved["text"], let prefix = saved["prefix"], let suffix = saved["suffix"] else {
@@ -84,7 +88,7 @@ private final class ArticlePage: NSObject, WKNavigationDelegate {
             return out.trim();
             """,
             arguments: [:],
-            contentWorld: .page
+            contentWorld: WebView.contentWorld
         )
         guard let text = result as? String else {
             Issue.record("paintedText returned a non-string result")
