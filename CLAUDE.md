@@ -50,7 +50,7 @@ The app uses SwiftUI + SwiftData throughout with CloudKit sync.
 - **`SidebarView.swift`** — Navigation items (Today, All Items, Bookmarks, Search), feed groups with collapse/expand, context menus, drag-and-drop reordering. Counts respect retention settings.
 - **`ItemGridView.swift`** — Article list with All/Unread filter, retention filtering, context menus, keyboard navigation (Cmd+Up/Down).
 - **`ArticleDetailView.swift`** — Article detail with HTML rendering, collapsible annotations section (notes + highlights), toolbar actions.
-- **`WebView.swift`** — `WKWebView` wrapper with JavaScript bridge for article rendering and text highlighting. Coordinator handles bidirectional Swift-JS communication.
+- **`WebView.swift`** — `WKWebView` wrapper with JavaScript bridge for article rendering and text highlighting. Coordinator handles bidirectional Swift-JS communication. Article JavaScript is off; `highlights.js` and the `broadsheet` message handler run in an isolated content world. The Coordinator's navigation policy opens clicked links in the browser and cancels every other main-frame navigation; remote iframes (embeds) keep their JavaScript.
 - **`SettingsView.swift`** — App settings (mark as read, refresh interval, retention, sync status).
 - **`BroadsheetCommands.swift`** — Menu bar commands with keyboard shortcuts.
 - **`WalkthroughView.swift`** — First-launch walkthrough with animated SF Symbols.

@@ -122,6 +122,7 @@ extension HelpTopic {
             ]),
             HelpSection(heading: "Opening in Browser", blocks: [
                 .p("Click the Safari button in the article toolbar to open the full article in your default web browser."),
+                .p("Links inside an article also open in your browser, so the article stays where it is. Footnote links scroll within the article."),
             ]),
             HelpSection(heading: "Deleting Articles", blocks: [
                 .p("Right-click an article and choose **Delete Article**. Deleted articles are hidden permanently — they won't reappear even if the feed is refreshed."),

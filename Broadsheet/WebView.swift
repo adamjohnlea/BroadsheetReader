@@ -109,8 +109,11 @@ struct WebView: NSViewRepresentable {
             guard let url = navigationAction.request.url else { return (.cancel, preferences) }
 
             if let frame = navigationAction.targetFrame {
-                // Embeds such as video players load inside their own frame.
+                // Embeds such as video players load inside their own frame and need their own
+                // scripts. Local frames (srcdoc, about:blank, data:) are written by the article
+                // itself, so they stay script-free like the article.
                 if !frame.isMainFrame {
+                    preferences.allowsContentJavaScript = !Self.isLocalFrame(url)
                     return (.allow, preferences)
                 }
                 if url == pendingLoadURL {
@@ -141,6 +144,11 @@ struct WebView: NSViewRepresentable {
                 return
             }
             openExternally(url)
+        }
+
+        /// Whether a frame at `url` holds content the article wrote rather than a remote page.
+        private static func isLocalFrame(_ url: URL) -> Bool {
+            ["about", "data", "blob", "javascript"].contains(url.scheme?.lowercased() ?? "")
         }
 
         /// Whether `url` points into `current` (the same page with a different `#fragment`).
@@ -248,8 +256,9 @@ struct WebView: NSViewRepresentable {
 
     /// The configuration for article web views.
     ///
-    /// The highlight script and the "broadsheet" message handler live in ``contentWorld``,
-    /// out of reach of scripts in the article.
+    /// Article JavaScript is off; the highlight script and the "broadsheet" message handler
+    /// live in ``contentWorld``, which still runs. Embedded iframes get JavaScript back in
+    /// ``Coordinator/webView(_:decidePolicyFor:preferences:)``.
     ///
     /// - Parameter coordinator: Receives messages from the highlight script.
     /// - Returns: A configuration for a new web view.
@@ -263,6 +272,7 @@ struct WebView: NSViewRepresentable {
         }
         let config = WKWebViewConfiguration()
         config.userContentController = controller
+        config.defaultWebpagePreferences.allowsContentJavaScript = false
         return config
     }
 

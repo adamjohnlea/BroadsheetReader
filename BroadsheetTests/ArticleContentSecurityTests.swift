@@ -312,3 +312,54 @@ struct ArticleNavigationPolicyTests {
         #expect(page.server.requested("/embed.html"))
     }
 }
+
+// MARK: - Article JavaScript
+
+@Suite("Article scripts don't run; embeds keep theirs")
+@MainActor
+struct ArticleJavaScriptPolicyTests {
+
+    @Test("Scripts and event handlers in the article don't run")
+    func articleScriptsDontRun() async throws {
+        let page = ArticlePage()
+        try await page.load("""
+            <script>fetch('probe://tracker/script');</script>
+            <img src="probe://cdn/broken" onerror="fetch('probe://tracker/onerror')">
+            """, baseURL: "probe://example.com/article")
+        try await page.waitUntil("image request") { page.server.requested("/broken") }
+        try await page.settle()
+        #expect(!page.server.requested("/script"))
+        #expect(!page.server.requested("/onerror"))
+    }
+
+    @Test("Scripts inside an embedded iframe run")
+    func embedScriptsRun() async throws {
+        let page = ArticlePage()
+        page.server.pages["/embed.html"] = "<script>fetch('probe://video/player');</script>"
+        try await page.load(#"<iframe src="probe://video/embed.html"></iframe>"#,
+                            baseURL: "probe://example.com/article")
+        try await page.waitUntil("embed script") { page.server.requested("/player") }
+        #expect(page.server.requested("/player"))
+    }
+
+    @Test("Scripts in an iframe the article writes itself (srcdoc) don't run")
+    func srcdocScriptsDontRun() async throws {
+        let page = ArticlePage()
+        try await page.load(#"<iframe srcdoc="<script>fetch('probe://tracker/srcdoc')</script>"></iframe>"#,
+                            baseURL: "probe://example.com/article")
+        try await page.settle()
+        #expect(!page.server.requested("/srcdoc"))
+    }
+
+    @Test("Highlights still paint with article JavaScript off")
+    func highlightsStillWork() async throws {
+        let page = ArticlePage()
+        try await page.load("<p>The quick brown fox jumps over the lazy dog.</p>")
+        let missing = try await ArticleWebView.applyHighlights([Highlight(selectedText: "brown fox")],
+                                                               in: page.webView)
+        #expect(missing.isEmpty)
+        let painted = try await page.run(
+            "return document.querySelector('.broadsheet-highlight')?.textContent;") as? String
+        #expect(painted == "brown fox")
+    }
+}
