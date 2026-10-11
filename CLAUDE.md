@@ -14,7 +14,7 @@ How we work together here. You are the senior engineer. I'm the project lead. I 
 - What the app does and who it's for.
 - What's stored, what syncs, what leaves the device.
 - Whether a task is done.
-- The written record of decisions, in DECISIONS.md.
+- The decisions themselves. You write them up in DECISIONS.md; I review the commit.
 
 **Always:**
 - Explore and agree a plan before building. Use /plan for anything past a trivial change.
@@ -22,7 +22,7 @@ How we work together here. You are the senior engineer. I'm the project lead. I 
 - Before you call anything done, show evidence: a clean build with no new warnings, tests that assert something, and a run on the Mac for the states that matter.
 - When you state a fact about an API, an availability version, or a migration, cite the Apple doc page or WWDC session, or write a short proof I can run. Don't assert from memory.
 - When I ask for something, tell me the strongest case against it before you build it. If you change a recommendation after I push, give me the reason. Don't just agree.
-- Record each decision and its reason in DECISIONS.md, in my words.
+- At the end of each working session, write each decision and its reason into DECISIONS.md, in my words, and commit it. Only record decisions I made or approved.
 
 Architecture lives in the Architecture section below. Decisions live in DECISIONS.md.
 
