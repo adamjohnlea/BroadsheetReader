@@ -17,6 +17,12 @@ YouTube iframes are the most common embed in real feeds, so iframes from other s
 **Links open in my browser, and the article stays put.**
 Clicking a link used to replace the article in the pane and then show a highlight error. Now clicked links open in the default browser, and footnote links still scroll within the article. Anything else the content tries, such as redirects, auto-refresh or submitting a form, is blocked. Newsletter signup forms in articles won't work; the Mac beeps instead.
 
+**Feed sites can't keep anything on my Mac between launches.**
+Article pages keep cookies, site storage and cache in memory for the session only. The cost is that images download again after a relaunch, and YouTube embeds won't know I'm signed in, so age-restricted videos need "Watch on YouTube".
+
+**Xcode's recommended project settings are committed.**
+They're Xcode's defaults for new projects, add no warnings, and the tests passed with them. This also stops Xcode asking about it.
+
 ## 2026-10-11
 
 **Claude writes DECISIONS.md at the end of each session.**
