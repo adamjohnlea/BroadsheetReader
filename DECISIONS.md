@@ -6,6 +6,17 @@ Decisions already baked into the app are described in CLAUDE.md:
 - All SwiftData relationships optional and no `@Attribute(.unique)`, with logic-based deduplication via guid checking (CloudKit requirement). See the Data Layer section.
 - Local storage fallback when iCloud is unavailable. See the Architecture section (`BroadsheetApp.swift`).
 
+## 2026-10-11 (article rendering)
+
+**Feed content can't run scripts in the article or talk to the app.**
+Tests showed that scripts in feed HTML could post fake highlights, pop error alerts with any text, and make real highlights show "Not found in article". Article JavaScript is now off, and the highlight code runs where article content can't reach it. Embedded posts from X and similar script widgets fall back to plain text; I accept that.
+
+**Embedded videos keep working.**
+YouTube iframes are the most common embed in real feeds, so iframes from other sites still get their JavaScript. Only the article itself and iframes it writes itself are script-free.
+
+**Links open in my browser, and the article stays put.**
+Clicking a link used to replace the article in the pane and then show a highlight error. Now clicked links open in the default browser, and footnote links still scroll within the article. Anything else the content tries, such as redirects, auto-refresh or submitting a form, is blocked. Newsletter signup forms in articles won't work; the Mac beeps instead.
+
 ## 2026-10-11
 
 **Claude writes DECISIONS.md at the end of each session.**
