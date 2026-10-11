@@ -142,18 +142,8 @@ struct ItemGridView: View {
         let visible = RetentionFilter.visibleItems(allItems, retentionDays: retentionDays)
 
         if !searchQuery.isEmpty {
-            let q = searchQuery.lowercased()
             return visible
-                .filter {
-                    $0.title.lowercased().contains(q)
-                    || ($0.summary?.lowercased().contains(q) ?? false)
-                    || ($0.content?.lowercased().contains(q) ?? false)
-                    || ($0.feed?.title.lowercased().contains(q) ?? false)
-                    || ($0.bookmark?.highlights ?? []).contains { h in
-                        h.selectedText.lowercased().contains(q)
-                        || (h.note?.lowercased().contains(q) ?? false)
-                    }
-                }
+                .filter { SearchFilter.matches($0, query: searchQuery) }
                 .sorted { ($0.publishedAt ?? $0.createdAt) > ($1.publishedAt ?? $1.createdAt) }
         }
 

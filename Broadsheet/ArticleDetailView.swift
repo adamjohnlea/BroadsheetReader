@@ -25,6 +25,8 @@ private struct ArticleReader: View {
     let item: FeedItem
     @Environment(\.modelContext) private var modelContext
     @State private var noteText: String = ""
+    @State private var missingHighlightIDs: Set<PersistentIdentifier> = []
+    @State private var highlightError: String?
     @AppStorage("annotationsExpanded") private var annotationsExpanded = true
 
     private static let dateline: DateFormatter = {
@@ -87,6 +89,7 @@ private struct ArticleReader: View {
                     bookmark: item.bookmark!,
                     isExpanded: $annotationsExpanded,
                     noteText: $noteText,
+                    missingHighlightIDs: missingHighlightIDs,
                     onDeleteHighlight: { highlight in
                         modelContext.delete(highlight)
                     }
@@ -103,6 +106,12 @@ private struct ArticleReader: View {
                     highlights: bookmarkHighlights,
                     onHighlightCreated: { selection in
                         createHighlight(from: selection)
+                    },
+                    onHighlightsApplied: { missing in
+                        missingHighlightIDs = missing
+                    },
+                    onError: { error in
+                        highlightError = error.localizedDescription
                     }
                 )
                 .padding(.horizontal, 20)
@@ -123,6 +132,17 @@ private struct ArticleReader: View {
             }
         }
         .onAppear { noteText = item.bookmark?.note ?? "" }
+        .alert(
+            "Highlight Problem",
+            isPresented: Binding(
+                get: { highlightError != nil },
+                set: { if !$0 { highlightError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(highlightError ?? "")
+        }
         .onChange(of: item.bookmark?.persistentModelID) { _, _ in
             noteText = item.bookmark?.note ?? ""
         }

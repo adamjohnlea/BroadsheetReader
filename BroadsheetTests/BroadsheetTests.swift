@@ -500,7 +500,7 @@ struct OPMLHandlerTests {
     private func makeInMemoryContainer() -> ModelContainer {
         try! ModelContainer(
             for: FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 }
@@ -513,7 +513,7 @@ struct ModelTests {
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 
@@ -833,7 +833,7 @@ struct DeletionTests {
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 
@@ -911,7 +911,7 @@ struct RetentionFilterTests {
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 
@@ -1089,7 +1089,7 @@ struct FeedFetcherLogicTests {
     func duplicateGUIDsSkipped() async throws {
         let container = try ModelContainer(
             for: FeedGroup.self, Feed.self, FeedItem.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
         let ctx = container.mainContext
         let feed = Feed(title: "Test", url: "https://x.com/feed")

@@ -7,6 +7,8 @@ struct AnnotationsSection: View {
     let bookmark: Bookmark
     @Binding var isExpanded: Bool
     @Binding var noteText: String
+    /// Highlights whose text could not be found in the article as currently shown.
+    var missingHighlightIDs: Set<PersistentIdentifier> = []
     var onDeleteHighlight: ((Highlight) -> Void)?
 
     private var highlights: [Highlight] {
@@ -69,6 +71,7 @@ struct AnnotationsSection: View {
                     ForEach(highlights) { highlight in
                         HighlightEntry(
                             highlight: highlight,
+                            isMissing: missingHighlightIDs.contains(highlight.persistentModelID),
                             onDelete: { onDeleteHighlight?(highlight) }
                         )
                     }
@@ -118,6 +121,7 @@ private struct NoteEntry: View {
 
 private struct HighlightEntry: View {
     let highlight: Highlight
+    let isMissing: Bool
     var onDelete: (() -> Void)?
     @State private var highlightNote: String = ""
 
@@ -141,6 +145,13 @@ private struct HighlightEntry: View {
                             .fill(.accent.opacity(0.5))
                             .frame(width: 2)
                     }
+
+                if isMissing {
+                    Label("Not found in article", systemImage: "exclamationmark.triangle")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .help("This passage no longer appears in the article, so it can't be shown in the text.")
+                }
 
                 // Inline note for this highlight
                 ZStack(alignment: .topLeading) {

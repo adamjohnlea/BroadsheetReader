@@ -9,6 +9,27 @@ struct HighlightSelection {
     let suffixContext: String
 }
 
+/// Errors raised by the article highlight system.
+enum HighlightError: LocalizedError {
+    /// `highlights.js` is missing from the app bundle.
+    case scriptMissing
+    /// The page's highlight script reported a failure.
+    case scriptFailed(String)
+    /// JavaScript returned a result in an unexpected shape.
+    case unexpectedResult
+
+    var errorDescription: String? {
+        switch self {
+        case .scriptMissing:
+            "The highlighting script is missing from the app."
+        case .scriptFailed(let message):
+            "Highlighting failed: \(message)"
+        case .unexpectedResult:
+            "Highlighting returned an unexpected result."
+        }
+    }
+}
+
 struct WebView: NSViewRepresentable {
     let html: String
     let baseURL: URL?
@@ -16,6 +37,10 @@ struct WebView: NSViewRepresentable {
 
     /// Called when the user selects text and taps "Highlight" in the WebView.
     var onHighlightCreated: ((HighlightSelection) -> Void)?
+    /// Called after highlights are painted, with the IDs of highlights whose text could not be found.
+    var onHighlightsApplied: ((Set<PersistentIdentifier>) -> Void)?
+    /// Called when the highlight system fails.
+    var onError: ((Error) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -35,51 +60,69 @@ struct WebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        let doc = styledDocument(html)
+        let coordinator = context.coordinator
+        coordinator.parent = self
         // Only reload if HTML content actually changed to preserve highlight state
-        if context.coordinator.lastLoadedHTML != doc {
-            context.coordinator.lastLoadedHTML = doc
-            context.coordinator.pendingHighlights = highlights
-            context.coordinator.parent = self
-            webView.loadHTMLString(doc, baseURL: baseURL)
-        } else {
-            context.coordinator.parent = self
+        if coordinator.lastLoadedHTML != html {
+            coordinator.lastLoadedHTML = html
+            coordinator.isLoaded = false
+            let script: String
+            switch Self.highlightScript {
+            case .success(let source):
+                script = source
+            case .failure:
+                // The article still loads; the error is surfaced to the user in didFinish.
+                script = ""
+            }
+            webView.loadHTMLString(Self.document(body: html, script: script), baseURL: baseURL)
+        } else if coordinator.isLoaded,
+                  coordinator.appliedHighlightIDs != highlights.map(\.persistentModelID) {
+            // Highlights were added or deleted; repaint so the page matches the model.
+            coordinator.applyHighlights()
         }
     }
 
     // MARK: - Coordinator
 
-    class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: WebView
-        var webView: WKWebView?
+        weak var webView: WKWebView?
         var lastLoadedHTML: String?
-        var pendingHighlights: [Highlight] = []
+        var isLoaded = false
+        var appliedHighlightIDs: [PersistentIdentifier]?
+        private var applyTask: Task<Void, Never>?
 
         init(parent: WebView) {
             self.parent = parent
         }
 
-        // Restore highlights after page finishes loading
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            restoreHighlights()
+            isLoaded = true
+            if case .failure(let error) = WebView.highlightScript {
+                parent.onError?(error)
+                return
+            }
+            applyHighlights()
         }
 
-        private func restoreHighlights() {
-            guard !pendingHighlights.isEmpty else { return }
+        /// Repaints the page with the current highlights and reports any that could not be found.
+        func applyHighlights() {
+            guard let webView else { return }
+            let highlights = parent.highlights
+            let ids = highlights.map(\.persistentModelID)
+            appliedHighlightIDs = ids
 
-            let highlightData: [[String: String]] = pendingHighlights.map { h in
-                [
-                    "id": h.persistentModelID.hashValue.description,
-                    "text": h.selectedText,
-                    "prefix": h.prefixContext,
-                    "suffix": h.suffixContext,
-                ]
+            applyTask?.cancel()
+            applyTask = Task { [weak self] in
+                do {
+                    let missing = try await WebView.applyHighlights(highlights, in: webView)
+                    guard !Task.isCancelled, let self else { return }
+                    self.parent.onHighlightsApplied?(Set(missing.map { ids[$0] }))
+                } catch {
+                    guard !Task.isCancelled, let self else { return }
+                    self.parent.onError?(error)
+                }
             }
-
-            guard let json = try? JSONSerialization.data(withJSONObject: highlightData),
-                  let jsonString = String(data: json, encoding: .utf8) else { return }
-
-            webView?.evaluateJavaScript("restoreHighlights(\(jsonString))") { _, _ in }
         }
 
         // Receive events from JavaScript
@@ -88,25 +131,83 @@ struct WebView: NSViewRepresentable {
             guard let body = message.body as? [String: Any],
                   let type = body["type"] as? String else { return }
 
-            DispatchQueue.main.async { [self] in
-                if type == "highlightCreated",
-                   let text = body["text"] as? String,
-                   let prefix = body["prefix"] as? String,
-                   let suffix = body["suffix"] as? String {
-                    let selection = HighlightSelection(
-                        selectedText: text,
-                        prefixContext: prefix,
-                        suffixContext: suffix
-                    )
-                    parent.onHighlightCreated?(selection)
+            switch type {
+            case "highlightCreated":
+                guard let text = body["text"] as? String,
+                      let prefix = body["prefix"] as? String,
+                      let suffix = body["suffix"] as? String else {
+                    parent.onError?(HighlightError.unexpectedResult)
+                    return
                 }
+                parent.onHighlightCreated?(HighlightSelection(
+                    selectedText: text,
+                    prefixContext: prefix,
+                    suffixContext: suffix
+                ))
+            case "highlightError":
+                let detail = body["message"] as? String ?? "Unknown error"
+                parent.onError?(HighlightError.scriptFailed(detail))
+            default:
+                // Not a Broadsheet message; feed content can post to the same handler.
+                break
             }
         }
     }
 
+    // MARK: - Highlight Script
+
+    /// Paints `highlights` in a loaded article page.
+    ///
+    /// Replaces any highlights already painted, so the page always matches the given set.
+    ///
+    /// - Parameters:
+    ///   - highlights: The highlights to paint.
+    ///   - webView: A web view showing a page built by ``document(body:script:)``.
+    /// - Returns: Indices into `highlights` of the highlights whose text was not found.
+    /// - Throws: A WebKit error if the script fails, or ``HighlightError/unexpectedResult``.
+    static func applyHighlights(_ highlights: [Highlight], in webView: WKWebView) async throws -> [Int] {
+        let payload: [[String: String]] = highlights.enumerated().map { index, h in
+            [
+                "id": String(index),
+                "text": h.selectedText,
+                "prefix": h.prefixContext,
+                "suffix": h.suffixContext,
+            ]
+        }
+        let result = try await webView.callAsyncJavaScript(
+            "return BroadsheetHighlights.apply(highlights);",
+            arguments: ["highlights": payload],
+            contentWorld: .page
+        )
+        guard let ids = result as? [String] else { throw HighlightError.unexpectedResult }
+        return try ids.map { id in
+            guard let index = Int(id), highlights.indices.contains(index) else {
+                throw HighlightError.unexpectedResult
+            }
+            return index
+        }
+    }
+
+    /// The highlight system's JavaScript, loaded once from the app bundle.
+    static let highlightScript: Result<String, Error> = Result {
+        guard let url = Bundle.main.url(forResource: "highlights", withExtension: "js") else {
+            throw HighlightError.scriptMissing
+        }
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
     // MARK: - HTML Document
 
-    private func styledDocument(_ body: String) -> String {
+    /// Builds the full HTML page for an article.
+    ///
+    /// The article body is wrapped in a root element that scopes highlight anchoring,
+    /// so the script and selection toolbar never count as article text.
+    ///
+    /// - Parameters:
+    ///   - body: The article's HTML content.
+    ///   - script: The highlight system's JavaScript source.
+    /// - Returns: A complete HTML document.
+    static func document(body: String, script: String) -> String {
         """
         <!DOCTYPE html>
         <html>
@@ -188,21 +289,11 @@ struct WebView: NSViewRepresentable {
         }
         </style>
         </head>
-        <body>\(body)
-        \(highlightJavaScript)
+        <body>
+        <div id="broadsheet-article-root">\(body)</div>
+        <script>\(script)</script>
         </body>
         </html>
         """
-    }
-
-    // MARK: - JavaScript
-
-    /// Loads the highlight system JS from the app bundle.
-    private var highlightJavaScript: String {
-        guard let url = Bundle.main.url(forResource: "highlights", withExtension: "js"),
-              let js = try? String(contentsOf: url, encoding: .utf8) else {
-            return ""
-        }
-        return "<script>\(js)</script>"
     }
 }
